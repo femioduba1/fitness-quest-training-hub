@@ -3,41 +3,82 @@ import 'screens/home_screen.dart';
 import 'screens/exercise_library_screen.dart';
 import 'screens/create_quest_screen.dart';
 import 'screens/progress_screen.dart';
+import 'screens/settings_screen.dart';
+import 'services/preferences_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const FitnessQuestApp());
+  runApp(FitnessQuestApp(key: FitnessQuestApp.appKey));
 }
-  
 
-// This is the root of the app
-// It sets up the overall theme and initial screen
-class FitnessQuestApp extends StatelessWidget {
+class FitnessQuestApp extends StatefulWidget {
   const FitnessQuestApp({super.key});
+
+  // Global key so SettingsScreen can call updateTheme() from anywhere
+  static final GlobalKey<_FitnessQuestAppState> appKey =
+      GlobalKey<_FitnessQuestAppState>();
+
+  @override
+  State<FitnessQuestApp> createState() => _FitnessQuestAppState();
+}
+
+class _FitnessQuestAppState extends State<FitnessQuestApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  // Load saved theme on app startup
+  Future<void> _loadTheme() async {
+    final saved = await PreferencesService.instance.getThemeMode();
+    setState(() {
+      _themeMode = _toThemeMode(saved);
+    });
+  }
+
+  // Called by SettingsScreen when user changes theme
+  void updateTheme(String mode) {
+    setState(() {
+      _themeMode = _toThemeMode(mode);
+    });
+  }
+
+  ThemeMode _toThemeMode(String mode) {
+    switch (mode) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fitness Quest',
-
-      // Removes the debug banner in the top right
       debugShowCheckedModeBanner: false,
-
-      // Global app theme (colors, styling, etc.)
+      themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.blue,
+        brightness: Brightness.light,
         scaffoldBackgroundColor: const Color(0xFFF6F8FB),
       ),
-
-      // Main navigation screen that controls all tabs
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+        brightness: Brightness.dark,
+      ),
       home: const MainNavigation(),
     );
   }
 }
 
-// This widget controls the bottom navigation bar
-// and switches between different screens
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
@@ -46,21 +87,16 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-
-  // Keeps track of which tab is currently selected
   int _selectedIndex = 0;
 
-  // List of all screens in the app
-  // The index corresponds to the selected tab
   final List<Widget> _screens = const [
     HomeScreen(),
     ExerciseLibraryScreen(),
     CreateQuestScreen(),
     ProgressScreen(),
+    SettingsScreen(),
   ];
 
-  // This function runs when a user taps a tab
-  // It updates the selected index and refreshes the UI
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -70,16 +106,10 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
-      // Displays the currently selected screen
       body: _screens[_selectedIndex],
-
-      // Bottom navigation bar for switching between screens
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-
-        // Each destination represents a screen/tab
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -100,6 +130,11 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart),
             label: 'Progress',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),

@@ -21,7 +21,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
   int _totalWorkouts = 0;
   int _weeklyWorkouts = 0;
   List<Map<String, dynamic>> _personalRecords = [];
-  List<Map<String, dynamic>> _exercises = [];
+  List<Map<String, dynamic>> _workoutHistory = [];
   List<bool> _weeklyActivity = List.filled(7, false);
   bool _isLoading = true;
 
@@ -35,18 +35,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Load all data in parallel
       final results = await Future.wait([
         _streakService.getCurrentStreak(),
         _logCrud.getAllLogs(),
         _logCrud.getWeeklyWorkoutCount(),
         _exerciseCrud.getAllExercises(),
+        _logCrud.getLogsWithExerciseNames(),
       ]);
 
       final allLogs = results[1] as List<Map<String, dynamic>>;
       final exercises = results[3] as List<Map<String, dynamic>>;
+      final workoutHistory = results[4] as List<Map<String, dynamic>>;
 
-      // Build weekly activity (Mon–Sun) from logs
       final weeklyActivity = await _buildWeeklyActivity();
 
       // Load personal records for each exercise
@@ -67,9 +67,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
         _currentStreak = results[0] as int;
         _totalWorkouts = allLogs.length;
         _weeklyWorkouts = results[2] as int;
-        _exercises = exercises;
         _weeklyActivity = weeklyActivity;
         _personalRecords = records;
+        _workoutHistory = workoutHistory;
         _isLoading = false;
       });
     } catch (e) {
@@ -85,7 +85,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
   }
 
-  // Builds a 7-element list (Mon–Sun) marking which days had a workout
   Future<List<bool>> _buildWeeklyActivity() async {
     final now = DateTime.now();
     final List<bool> activity = List.filled(7, false);
@@ -100,6 +99,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
 
     return activity;
+  }
+
+  // Formats the logged_at timestamp to a readable date
+  String _formatDate(String isoDate) {
+    final date = DateTime.parse(isoDate);
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   @override
@@ -147,13 +156,108 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
                 const SizedBox(height: 24),
 
-                // Weekly activity chart
+                // Weekly activity
                 _WeeklyActivityCard(weeklyActivity: _weeklyActivity),
-
                 const SizedBox(height: 16),
 
-                // Personal records section
+                // Personal records
                 _PersonalRecordsCard(records: _personalRecords),
+                const SizedBox(height: 16),
+
+                // ── WORKOUT HISTORY ──────────────────────────
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Workout History',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _workoutHistory.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No workouts logged yet.\nTap an exercise in the Library to get started!',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _workoutHistory.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(),
+                                itemBuilder: (context, index) {
+                                  final log = _workoutHistory[index];
+                                  final weight = log['weight'];
+
+                                  return ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: CircleAvatar(
+                                      backgroundColor:
+                                          const Color(0xFF3B82F6),
+                                      child: Text(
+                                        log['exercise_name']
+                                            .toString()
+                                            .substring(0, 1),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    title: Text(
+                                      log['exercise_name'],
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${log['sets']} sets × ${log['reps']} reps'
+                                          '${weight != null ? ' • ${weight}lbs' : ''}',
+                                        ),
+                                        if (log['notes'] != null &&
+                                            log['notes']
+                                                .toString()
+                                                .isNotEmpty)
+                                          Text(
+                                            log['notes'],
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        Text(
+                                          _formatDate(log['logged_at']),
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    isThreeLine: true,
+                                  );
+                                },
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 16),
 
@@ -194,7 +298,7 @@ class _ProgressStatCard extends StatelessWidget {
   }
 }
 
-// Weekly activity card — shows Mon–Sun with filled/empty circles
+// Weekly activity card
 class _WeeklyActivityCard extends StatelessWidget {
   final List<bool> weeklyActivity;
 
@@ -254,7 +358,7 @@ class _WeeklyActivityCard extends StatelessWidget {
   }
 }
 
-// Personal records card — shows best record per exercise
+// Personal records card
 class _PersonalRecordsCard extends StatelessWidget {
   final List<Map<String, dynamic>> records;
 
@@ -278,7 +382,7 @@ class _PersonalRecordsCard extends StatelessWidget {
             records.isEmpty
                 ? const Center(
                     child: Text(
-                      'No personal records yet.\nLog a workout to get started!',
+                      'No personal records yet.\nLog a workout with weight to set a record!',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey),
                     ),

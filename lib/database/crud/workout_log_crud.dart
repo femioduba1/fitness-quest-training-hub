@@ -47,11 +47,14 @@ class WorkoutLogCrud {
   Future<int> getWeeklyWorkoutCount() async {
     final database = await db.database;
     final monday = _getThisMonday();
-    final result = await database.rawQuery('''
+    final result = await database.rawQuery(
+      '''
       SELECT COUNT(DISTINCT date(logged_at)) as count
       FROM ${DBSchema.tableWorkoutLogs}
       WHERE logged_at >= ?
-    ''', [monday]);
+    ''',
+      [monday],
+    );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
@@ -70,5 +73,24 @@ class WorkoutLogCrud {
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
     return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+  }
+
+  // GET ALL LOGS WITH EXERCISE NAMES (for display)
+  Future<List<Map<String, dynamic>>> getLogsWithExerciseNames() async {
+    final database = await db.database;
+    return await database.rawQuery('''
+    SELECT 
+      wl.id,
+      wl.sets,
+      wl.reps,
+      wl.weight,
+      wl.notes,
+      wl.logged_at,
+      e.name as exercise_name,
+      e.muscle_group
+    FROM ${DBSchema.tableWorkoutLogs} wl
+    INNER JOIN ${DBSchema.tableExercises} e ON wl.exercise_id = e.id
+    ORDER BY wl.logged_at DESC
+  ''');
   }
 }
