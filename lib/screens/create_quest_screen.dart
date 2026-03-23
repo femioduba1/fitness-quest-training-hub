@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+// This screen is where users create a new workout quest.
+// It includes a form with inputs like name, description, duration, and weekly goal.
 class CreateQuestScreen extends StatefulWidget {
   const CreateQuestScreen({super.key});
 
@@ -8,23 +10,31 @@ class CreateQuestScreen extends StatefulWidget {
 }
 
 class _CreateQuestScreenState extends State<CreateQuestScreen> {
+
+  // This key is used to manage and validate the form
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  // Controllers used to grab input values from the text fields
   final TextEditingController _questNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+  // These store the selected dropdown values
   String selectedDuration = '1 Week';
   int selectedWeeklyGoal = 3;
 
   @override
   void dispose() {
+    // Clean up controllers when the screen is removed
     _questNameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
+  // This function runs when the user presses "Save Quest"
+  // It validates the form and (later) will connect to SQLite
   void _saveQuest() {
     if (_formKey.currentState!.validate()) {
+      // For now, just show a message confirming validation worked
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -43,6 +53,7 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
+        // Keeps layout clean and prevents overflow when keyboard opens
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Card(
           elevation: 2,
@@ -51,10 +62,14 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
+
+            // Form widget wraps all input fields so we can validate everything together
             child: Form(
               key: _formKey,
               child: Column(
                 children: [
+
+                  // Quest Name input (required field)
                   TextFormField(
                     controller: _questNameController,
                     decoration: const InputDecoration(
@@ -68,7 +83,10 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 16),
+
+                  // Optional description input
                   TextFormField(
                     controller: _descriptionController,
                     maxLines: 3,
@@ -77,7 +95,10 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
+                  // Dropdown for selecting how long the quest lasts
                   DropdownButtonFormField<String>(
                     value: selectedDuration,
                     decoration: const InputDecoration(
@@ -104,7 +125,10 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                       });
                     },
                   ),
+
                   const SizedBox(height: 16),
+
+                  // Dropdown for selecting how many workouts per week
                   DropdownButtonFormField<int>(
                     value: selectedWeeklyGoal,
                     decoration: const InputDecoration(
@@ -124,7 +148,10 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                       });
                     },
                   ),
+
                   const SizedBox(height: 20),
+
+                  // Save button triggers validation and (later) database save
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(

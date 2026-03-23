@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+// This screen shows the user's workout progress and basic analytics.
+// Right now it's using placeholder data, but it’s structured so it can
+// easily connect to real data from SQLite later.
 class ProgressScreen extends StatelessWidget {
   const ProgressScreen({super.key});
 
@@ -11,28 +14,39 @@ class ProgressScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: ListView(
+        // Using ListView so the screen can scroll if more data is added later
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: const [
+
+          // These cards show key stats like streak, workouts, and hours trained
           _ProgressStatCard(
             title: 'Current Streak',
             value: '5 days',
             icon: Icons.local_fire_department,
           ),
           SizedBox(height: 12),
+
           _ProgressStatCard(
             title: 'Completed Workouts',
             value: '18',
             icon: Icons.check_circle,
           ),
           SizedBox(height: 12),
+
           _ProgressStatCard(
             title: 'Hours Trained',
             value: '12.5 hrs',
             icon: Icons.timer,
           ),
+
           SizedBox(height: 24),
+
+          // Section for weekly activity (will later display a chart)
           _WeeklyActivityCard(),
+
           SizedBox(height: 16),
+
+          // Section for tracking progress photos over time
           _ProgressPhotosCard(),
         ],
       ),
@@ -40,6 +54,7 @@ class ProgressScreen extends StatelessWidget {
   }
 }
 
+// Reusable stat card used to display key metrics like streak, workouts, etc.
 class _ProgressStatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -73,6 +88,8 @@ class _ProgressStatCard extends StatelessWidget {
   }
 }
 
+// This card represents the weekly activity section
+// Right now it's just a placeholder, but it’s where charts/graphs would go
 class _WeeklyActivityCard extends StatelessWidget {
   const _WeeklyActivityCard();
 
@@ -99,6 +116,7 @@ class _WeeklyActivityCard extends StatelessWidget {
               height: 120,
               child: Center(
                 child: Text(
+                  // Placeholder text so we can plug in real chart data later
                   'Chart placeholder\nPartner can connect live data here later.',
                   textAlign: TextAlign.center,
                 ),
@@ -111,6 +129,8 @@ class _WeeklyActivityCard extends StatelessWidget {
   }
 }
 
+// This card is meant for progress photos over time
+// Could be used to show visual transformations or checkpoints
 class _ProgressPhotosCard extends StatelessWidget {
   const _ProgressPhotosCard();
 

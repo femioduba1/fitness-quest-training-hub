@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+// This is the main dashboard screen the user sees first.
+// It shows a summary of their workout progress and active quests.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  // This controls whether we show quests or an empty state
   final bool hasQuests = true;
 
   @override
@@ -13,10 +16,16 @@ class HomeScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: Padding(
+        // Keeps spacing consistent across the screen
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
+        // If the user has quests, show dashboard content
+        // otherwise show empty state message
         child: hasQuests
             ? ListView(
                 children: [
+
+                  // Top banner section (acts like a welcome/header area)
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -47,7 +56,10 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
+                  // Section title for quick stats
                   const Text(
                     'Quick Stats',
                     style: TextStyle(
@@ -55,7 +67,10 @@ class HomeScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
+                  // Row showing key stats like active quests and weekly workouts
                   Row(
                     children: const [
                       Expanded(
@@ -75,7 +90,10 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 24),
+
+                  // Section title for active quests
                   const Text(
                     'Current Workout Quests',
                     style: TextStyle(
@@ -83,14 +101,19 @@ class HomeScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
+                  // Example quest cards (will later be replaced with real data)
                   const _QuestCard(
                     title: 'Strength Builder',
                     subtitle: 'Upper body focus • 4 weeks',
                     progress: 0.65,
                     progressText: '65% complete',
                   ),
+
                   const SizedBox(height: 12),
+
                   const _QuestCard(
                     title: 'Cardio Reset',
                     subtitle: 'Endurance focus • 2 weeks',
@@ -99,6 +122,8 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               )
+
+            // If no quests exist, show this message instead
             : const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -122,6 +147,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+// This is a reusable card for displaying quick stats
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -165,6 +191,8 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// This represents a single workout quest card
+// It shows title, description, and progress visually
 class _QuestCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -200,10 +228,13 @@ class _QuestCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(subtitle),
             const SizedBox(height: 12),
+
+            // Progress bar shows how far along the quest is
             LinearProgressIndicator(
               value: progress,
               borderRadius: BorderRadius.circular(12),
             ),
+
             const SizedBox(height: 8),
             Text(progressText),
           ],
