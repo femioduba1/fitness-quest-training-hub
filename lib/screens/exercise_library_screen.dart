@@ -18,25 +18,21 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
       final matchesSearch =
           exercise.name.toLowerCase().contains(searchText.toLowerCase());
 
-      final matchesDifficulty = selectedDifficulty == 'All' ||
-          exercise.difficulty == selectedDifficulty;
+      final matchesDifficulty =
+          selectedDifficulty == 'All' || exercise.difficulty == selectedDifficulty;
 
       return matchesSearch && matchesDifficulty;
     }).toList();
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Exercise Library'),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           children: [
-            const Text(
-              'Exercise Library',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search exercises',
@@ -84,7 +80,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
             Expanded(
               child: filteredExercises.isEmpty
                   ? const Center(
-                      child: Text('No exercises found.'),
+                      child: Text(
+                        'No exercises found.',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     )
                   : ListView.builder(
                       itemCount: filteredExercises.length,
@@ -92,6 +91,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                         final exercise = filteredExercises[index];
 
                         return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
                             leading: const CircleAvatar(
