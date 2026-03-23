@@ -5,6 +5,7 @@ import 'screens/create_quest_screen.dart';
 import 'screens/progress_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/preferences_service.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,6 @@ void main() async {
 class FitnessQuestApp extends StatefulWidget {
   const FitnessQuestApp({super.key});
 
-  // Global key so SettingsScreen can call updateTheme() from anywhere
   static final GlobalKey<_FitnessQuestAppState> appKey =
       GlobalKey<_FitnessQuestAppState>();
 
@@ -23,7 +23,7 @@ class FitnessQuestApp extends StatefulWidget {
 }
 
 class _FitnessQuestAppState extends State<FitnessQuestApp> {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   @override
   void initState() {
@@ -31,19 +31,13 @@ class _FitnessQuestAppState extends State<FitnessQuestApp> {
     _loadTheme();
   }
 
-  // Load saved theme on app startup
   Future<void> _loadTheme() async {
     final saved = await PreferencesService.instance.getThemeMode();
-    setState(() {
-      _themeMode = _toThemeMode(saved);
-    });
+    setState(() => _themeMode = _toThemeMode(saved));
   }
 
-  // Called by SettingsScreen when user changes theme
   void updateTheme(String mode) {
-    setState(() {
-      _themeMode = _toThemeMode(mode);
-    });
+    setState(() => _themeMode = _toThemeMode(mode));
   }
 
   ThemeMode _toThemeMode(String mode) {
@@ -53,7 +47,7 @@ class _FitnessQuestAppState extends State<FitnessQuestApp> {
       case 'dark':
         return ThemeMode.dark;
       default:
-        return ThemeMode.system;
+        return ThemeMode.dark;
     }
   }
 
@@ -63,17 +57,8 @@ class _FitnessQuestAppState extends State<FitnessQuestApp> {
       title: 'Fitness Quest',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF6F8FB),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-        brightness: Brightness.dark,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       home: const MainNavigation(),
     );
   }
@@ -97,19 +82,15 @@ class _MainNavigationState extends State<MainNavigation> {
     SettingsScreen(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

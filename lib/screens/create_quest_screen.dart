@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/crud/quest_crud.dart';
+import '../theme/app_theme.dart';
 
 class CreateQuestScreen extends StatefulWidget {
   const CreateQuestScreen({super.key});
@@ -12,13 +13,11 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _questNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-
-  // Database instance
   final QuestCrud _questCrud = QuestCrud();
 
   String selectedDuration = '1 Week';
   int selectedWeeklyGoal = 3;
-  bool _isSaving = false; // Prevents double tapping save button
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -27,27 +26,20 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
     super.dispose();
   }
 
-  // Converts duration string to number of weeks for database
   int _durationToWeeks(String duration) {
     switch (duration) {
-      case '1 Week':
-        return 1;
-      case '2 Weeks':
-        return 2;
-      case '1 Month':
-        return 4;
-      default:
-        return 1;
+      case '1 Week': return 1;
+      case '2 Weeks': return 2;
+      case '1 Month': return 4;
+      default: return 1;
     }
   }
 
-  // Saves the quest to SQLite
   Future<void> _saveQuest() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
-
       try {
-        final questId = await _questCrud.insertQuest({
+        await _questCrud.insertQuest({
           'name': _questNameController.text.trim(),
           'description': _descriptionController.text.trim(),
           'duration_weeks': _durationToWeeks(selectedDuration),
@@ -58,13 +50,11 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Quest saved! ID: $questId'),
-              backgroundColor: Colors.green,
+            const SnackBar(
+              content: Text('Quest created! Time to grind 💪'),
+              backgroundColor: AppTheme.orange,
             ),
           );
-
-          // Clear the form after saving
           _questNameController.clear();
           _descriptionController.clear();
           setState(() {
@@ -90,121 +80,226 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Quest'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('CREATE QUEST')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
 
-                  // Quest Name input (required)
-                  TextFormField(
-                    controller: _questNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Quest Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a quest name';
-                      }
-                      return null;
-                    },
+              // Header banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.orange, AppTheme.orangeDark],
                   ),
-
-                  const SizedBox(height: 16),
-
-                  // Optional description
-                  TextFormField(
-                    controller: _descriptionController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      border: OutlineInputBorder(),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NEW QUEST',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Duration dropdown
-                  DropdownButtonFormField<String>(
-                    value: selectedDuration,
-                    decoration: const InputDecoration(
-                      labelText: 'Duration',
-                      border: OutlineInputBorder(),
+                    SizedBox(height: 4),
+                    Text(
+                      'Define Your Challenge',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: '1 Week', child: Text('1 Week')),
-                      DropdownMenuItem(value: '2 Weeks', child: Text('2 Weeks')),
-                      DropdownMenuItem(value: '1 Month', child: Text('1 Month')),
-                    ],
-                    onChanged: (value) {
-                      setState(() => selectedDuration = value!);
-                    },
-                  ),
+                  ],
+                ),
+              ),
 
-                  const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-                  // Weekly goal dropdown
-                  DropdownButtonFormField<int>(
-                    value: selectedWeeklyGoal,
-                    decoration: const InputDecoration(
-                      labelText: 'Weekly Goal',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('1 workout')),
-                      DropdownMenuItem(value: 2, child: Text('2 workouts')),
-                      DropdownMenuItem(value: 3, child: Text('3 workouts')),
-                      DropdownMenuItem(value: 4, child: Text('4 workouts')),
-                      DropdownMenuItem(value: 5, child: Text('5 workouts')),
-                    ],
-                    onChanged: (value) {
-                      setState(() => selectedWeeklyGoal = value!);
-                    },
-                  ),
+              // Section label
+              const _FieldLabel(label: 'QUEST NAME'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _questNameController,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                decoration: const InputDecoration(
+                  hintText: 'e.g. 30-Day Strength Builder',
+                  prefixIcon:
+                      Icon(Icons.flag, color: AppTheme.orange),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a quest name';
+                  }
+                  return null;
+                },
+              ),
 
-                  const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                  // Save button — shows loading spinner while saving
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+              const _FieldLabel(label: 'DESCRIPTION (OPTIONAL)'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 3,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                decoration: const InputDecoration(
+                  hintText: 'What is this quest about?',
+                  prefixIcon:
+                      Icon(Icons.notes, color: AppTheme.orange),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              const _FieldLabel(label: 'DURATION'),
+              const SizedBox(height: 8),
+
+              // Duration selector buttons
+              Row(
+                children: ['1 Week', '2 Weeks', '1 Month'].map((duration) {
+                  final isSelected = selectedDuration == duration;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => selectedDuration = duration),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.orange
+                                : AppTheme.cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.orange
+                                  : AppTheme.divider,
+                            ),
+                          ),
+                          child: Text(
+                            duration.toUpperCase(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppTheme.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
                       ),
-                      onPressed: _isSaving ? null : _saveQuest,
-                      child: _isSaving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text(
-                              'Save Quest',
-                              style: TextStyle(fontSize: 16),
-                            ),
                     ),
-                  ),
-                ],
+                  );
+                }).toList(),
               ),
-            ),
+
+              const SizedBox(height: 20),
+
+              const _FieldLabel(label: 'WEEKLY GOAL'),
+              const SizedBox(height: 8),
+
+              // Weekly goal selector
+              Row(
+                children: [1, 2, 3, 4, 5].map((goal) {
+                  final isSelected = selectedWeeklyGoal == goal;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => selectedWeeklyGoal = goal),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.orange
+                                : AppTheme.cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.orange
+                                  : AppTheme.divider,
+                            ),
+                          ),
+                          child: Text(
+                            '$goal',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppTheme.textSecondary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  'workouts per week',
+                  style: TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 12),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Save button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _saveQuest,
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('CREATE QUEST'),
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  const _FieldLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: AppTheme.textSecondary,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.5,
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/preferences_service.dart';
+import '../theme/app_theme.dart';
 import '../main.dart';
+import '../widgets/theme_toggle.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,7 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final PreferencesService _prefs = PreferencesService.instance;
   final TextEditingController _nameController = TextEditingController();
 
-  String _themeMode = 'system';
+  String _themeMode = 'dark';
   String _weightUnit = 'lbs';
   bool _notificationsEnabled = true;
   bool _isLoading = true;
@@ -31,17 +33,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  // Load all saved settings from SharedPreferences
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
-
     final results = await Future.wait([
       _prefs.getUserName(),
       _prefs.getThemeMode(),
       _prefs.getWeightUnit(),
       _prefs.getNotificationsEnabled(),
     ]);
-
     setState(() {
       _nameController.text = results[0] as String;
       _themeMode = results[1] as String;
@@ -51,10 +50,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // Save all settings and update theme immediately
+  // Called after toggle animation completes
+  Future<void> _onThemeToggled(bool isDark) async {
+    final mode = isDark ? 'dark' : 'light';
+    setState(() => _themeMode = mode);
+    await _prefs.setThemeMode(mode);
+    FitnessQuestApp.appKey.currentState?.updateTheme(mode);
+  }
+
   Future<void> _saveSettings() async {
     setState(() => _isSaving = true);
-
     try {
       await Future.wait([
         _prefs.setUserName(_nameController.text.trim()),
@@ -62,15 +67,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _prefs.setWeightUnit(_weightUnit),
         _prefs.setNotificationsEnabled(_notificationsEnabled),
       ]);
-
-      // Tell the app to update the theme immediately
       FitnessQuestApp.appKey.currentState?.updateTheme(_themeMode);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Settings saved!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.orange,
           ),
         );
       }
@@ -78,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save settings: $e'),
+            content: Text('Failed to save: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -88,15 +90,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // Clears all saved preferences and resets the form
   Future<void> _resetSettings() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Settings'),
-        content: const Text(
-          'Are you sure you want to reset all settings to default?',
-        ),
+        content: const Text('Reset all settings to default?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -104,10 +103,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Reset',
-              style: TextStyle(color: Colors.red),
-            ),
+            child:
+                const Text('Reset', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -116,10 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm == true) {
       await _prefs.clearAll();
       await _loadSettings();
-
-      // Reset theme back to system
-      FitnessQuestApp.appKey.currentState?.updateTheme('system');
-
+      FitnessQuestApp.appKey.currentState?.updateTheme('dark');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -133,185 +127,234 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppTheme.darkCard : AppTheme.lightCard;
+    final borderColor = isDark ? AppTheme.darkDivider : AppTheme.lightDivider;
+    final primaryText = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final secondaryText = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('SETTINGS')),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.orange))
           : SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
 
-                  // ── PROFILE SECTION ──────────────────────────
-                  const _SectionHeader(title: 'Profile'),
-                  const SizedBox(height: 12),
-
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
+                  // ── PROFILE ──────────────────────────────
+                  _SectionLabel(label: 'PROFILE', color: secondaryText),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Your Name',
-                          prefixIcon: Icon(Icons.person),
-                          border: OutlineInputBorder(),
-                        ),
+                    child: TextField(
+                      controller: _nameController,
+                      style: TextStyle(color: primaryText),
+                      decoration: InputDecoration(
+                        labelText: 'Your Name',
+                        labelStyle: TextStyle(color: secondaryText),
+                        prefixIcon: const Icon(Icons.person,
+                            color: AppTheme.orange),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 24),
 
-                  // ── APPEARANCE SECTION ───────────────────────
-                  const _SectionHeader(title: 'Appearance'),
-                  const SizedBox(height: 12),
-
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
+                  // ── APPEARANCE ───────────────────────────
+                  _SectionLabel(label: 'APPEARANCE', color: secondaryText),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: DropdownButtonFormField<String>(
-                        value: _themeMode,
-                        decoration: const InputDecoration(
-                          labelText: 'Theme',
-                          prefixIcon: Icon(Icons.palette),
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'system',
-                            child: Text('System Default'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'light',
-                            child: Text('Light'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'dark',
-                            child: Text('Dark'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _themeMode = value!);
-                        },
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ── PREFERENCES SECTION ──────────────────────
-                  const _SectionHeader(title: 'Preferences'),
-                  const SizedBox(height: 12),
-
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-
-                          // Weight unit dropdown
-                          DropdownButtonFormField<String>(
-                            value: _weightUnit,
-                            decoration: const InputDecoration(
-                              labelText: 'Weight Unit',
-                              prefixIcon: Icon(Icons.fitness_center),
-                              border: OutlineInputBorder(),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'lbs',
-                                child: Text('Pounds (lbs)'),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Theme',
+                              style: TextStyle(
+                                color: primaryText,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
                               ),
-                              DropdownMenuItem(
-                                value: 'kg',
-                                child: Text('Kilograms (kg)'),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _themeMode == 'dark'
+                                  ? 'Dark mode'
+                                  : 'Light mode',
+                              style: TextStyle(
+                                color: secondaryText,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Animated theme toggle
+                        ThemeToggle(
+                          isDark: _themeMode == 'dark',
+                          onToggled: _onThemeToggled,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── PREFERENCES ──────────────────────────
+                  _SectionLabel(label: 'PREFERENCES', color: secondaryText),
+                  const SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Column(
+                      children: [
+                        // Weight unit
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.fitness_center,
+                                      color: AppTheme.orange, size: 20),
+                                  const SizedBox(width: 12),
+                                  Text('Weight Unit',
+                                      style:
+                                          TextStyle(color: primaryText)),
+                                ],
+                              ),
+                              Row(
+                                children: ['lbs', 'kg'].map((unit) {
+                                  final isSelected = _weightUnit == unit;
+                                  return Padding(
+                                    padding:
+                                        const EdgeInsets.only(left: 8),
+                                    child: GestureDetector(
+                                      onTap: () => setState(
+                                          () => _weightUnit = unit),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppTheme.orange
+                                              : isDark
+                                                  ? AppTheme.darkCardLight
+                                                  : AppTheme.lightCardLight,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          unit.toUpperCase(),
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : secondaryText,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               ),
                             ],
-                            onChanged: (value) {
-                              setState(() => _weightUnit = value!);
-                            },
                           ),
+                        ),
 
-                          const SizedBox(height: 16),
+                        Divider(height: 1, color: borderColor),
 
-                          // Notifications toggle
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Notifications'),
-                            subtitle: const Text('Enable workout reminders'),
-                            secondary: const Icon(Icons.notifications),
-                            value: _notificationsEnabled,
-                            onChanged: (value) {
-                              setState(() => _notificationsEnabled = value);
-                            },
+                        // Notifications
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.notifications,
+                                      color: AppTheme.orange, size: 20),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Notifications',
+                                          style: TextStyle(
+                                              color: primaryText)),
+                                      Text('Workout reminders',
+                                          style: TextStyle(
+                                              color: secondaryText,
+                                              fontSize: 12)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: _notificationsEnabled,
+                                onChanged: (value) => setState(() =>
+                                    _notificationsEnabled = value),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
-                  // ── SAVE BUTTON ──────────────────────────────
+                  // Save button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
                       onPressed: _isSaving ? null : _saveSettings,
                       child: _isSaving
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white),
                             )
-                          : const Text(
-                              'Save Settings',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('SAVE SETTINGS'),
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // ── RESET BUTTON ─────────────────────────────
+                  // Reset button
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
                       onPressed: _resetSettings,
-                      child: const Text(
-                        'Reset to Default',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      child: const Text('RESET TO DEFAULT'),
                     ),
                   ),
 
@@ -323,19 +366,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-// Reusable section header
-class _SectionHeader extends StatelessWidget {
-  final String title;
-
-  const _SectionHeader({required this.title});
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SectionLabel({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
+      label,
+      style: TextStyle(
+        color: color,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 2,
       ),
     );
   }
