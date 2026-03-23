@@ -1,0 +1,51 @@
+import '../database_helper.dart';
+import '../schema.dart';
+
+class WorkoutLogCrud {
+  final db = DatabaseHelper.instance;
+
+  // CREATE
+  Future<int> insertLog(Map<String, dynamic> log) async {
+    final database = await db.database;
+    log['logged_at'] = DateTime.now().toIso8601String();
+    return await database.insert(DBSchema.tableWorkoutLogs, log);
+  }
+
+  // READ ALL LOGS
+  Future<List<Map<String, dynamic>>> getAllLogs() async {
+    final database = await db.database;
+    return await database.query(DBSchema.tableWorkoutLogs, orderBy: 'logged_at DESC');
+  }
+
+  // READ LOGS FOR A SPECIFIC QUEST
+  Future<List<Map<String, dynamic>>> getLogsByQuest(int questId) async {
+    final database = await db.database;
+    return await database.query(
+      DBSchema.tableWorkoutLogs,
+      where: 'quest_id = ?',
+      whereArgs: [questId],
+      orderBy: 'logged_at DESC',
+    );
+  }
+
+  // READ LOGS FOR TODAY (used for streak tracking)
+  Future<List<Map<String, dynamic>>> getTodaysLogs() async {
+    final database = await db.database;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    return await database.query(
+      DBSchema.tableWorkoutLogs,
+      where: 'logged_at LIKE ?',
+      whereArgs: ['$today%'],
+    );
+  }
+
+  // DELETE
+  Future<int> deleteLog(int id) async {
+    final database = await db.database;
+    return await database.delete(
+      DBSchema.tableWorkoutLogs,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+}

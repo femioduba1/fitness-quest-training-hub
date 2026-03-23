@@ -4,7 +4,8 @@ import 'screens/exercise_library_screen.dart';
 import 'screens/create_quest_screen.dart';
 import 'screens/progress_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const FitnessQuestApp());
 }
 
