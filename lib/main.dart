@@ -4,11 +4,15 @@ import 'screens/exercise_library_screen.dart';
 import 'screens/create_quest_screen.dart';
 import 'screens/progress_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/ai_trainer_screen.dart';
 import 'services/preferences_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.initialize();
+  await NotificationService.instance.scheduleMotivationalNotifications();
   runApp(FitnessQuestApp(key: FitnessQuestApp.appKey));
 }
 
@@ -79,6 +83,7 @@ class _MainNavigationState extends State<MainNavigation> {
     ExerciseLibraryScreen(),
     CreateQuestScreen(),
     ProgressScreen(),
+    AITrainerScreen(),
     SettingsScreen(),
   ];
 
@@ -111,6 +116,11 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart),
             label: 'Progress',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.psychology_outlined),
+            selectedIcon: Icon(Icons.psychology),
+            label: 'AI Trainer',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
