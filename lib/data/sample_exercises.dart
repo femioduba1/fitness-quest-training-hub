@@ -1,4 +1,7 @@
 import '../models/exercise.dart';
+// Sample exercise data used for the Exercise Library screen.
+// This acts as temporary/mock data for UI development.
+// Later, this can be replaced or extended with database-driven data.
 
 final List<Exercise> sampleExercises = [
   Exercise(
