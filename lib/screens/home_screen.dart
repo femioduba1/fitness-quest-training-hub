@@ -1,12 +1,76 @@
 import 'package:flutter/material.dart';
+import '../database/crud/quest_crud.dart';
+import '../database/crud/workout_log_crud.dart';
+import '../services/streak_service.dart';
+import '../services/preferences_service.dart';
 
-// This is the main dashboard screen the user sees first.
-// It shows a summary of their workout progress and active quests.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  // This controls whether we show quests or an empty state
-  final bool hasQuests = true;
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final QuestCrud _questCrud = QuestCrud();
+  final WorkoutLogCrud _logCrud = WorkoutLogCrud();
+  final StreakService _streakService = StreakService.instance;
+  final PreferencesService _prefsService = PreferencesService.instance;
+
+  List<Map<String, dynamic>> _activeQuests = [];
+  int _currentStreak = 0;
+  int _weeklyWorkouts = 0;
+  String _userName = 'Athlete';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+  }
+
+  // Loads all data needed for the dashboard
+  Future<void> _loadDashboard() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Load everything in parallel for speed
+      final results = await Future.wait([
+        _questCrud.getActiveQuests(),
+        _streakService.getCurrentStreak(),
+        _logCrud.getWeeklyWorkoutCount(),
+        _prefsService.getUserName(),
+      ]);
+
+      setState(() {
+        _activeQuests = results[0] as List<Map<String, dynamic>>;
+        _currentStreak = results[1] as int;
+        _weeklyWorkouts = results[2] as int;
+        _userName = results[3] as String;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load dashboard: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Calculates quest progress based on logs vs weekly goal
+  double _calculateProgress(Map<String, dynamic> quest) {
+    final durationWeeks = quest['duration_weeks'] as int;
+    final weeklyGoal = quest['weekly_goal'] as int;
+    final totalGoal = durationWeeks * weeklyGoal;
+    if (totalGoal == 0) return 0.0;
+    // Clamp between 0 and 1
+    return (_weeklyWorkouts / totalGoal).clamp(0.0, 1.0);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,140 +78,151 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Home'),
         centerTitle: true,
+        // Refresh button to reload dashboard manually
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDashboard,
+          ),
+        ],
       ),
-      body: Padding(
-        // Keeps spacing consistent across the screen
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-
-        // If the user has quests, show dashboard content
-        // otherwise show empty state message
-        child: hasQuests
-            ? ListView(
-                children: [
-
-                  // Top banner section (acts like a welcome/header area)
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: _activeQuests.isEmpty
+                  // Empty state — no quests yet
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.fitness_center, size: 50),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'No quests yet',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text('Create your first workout quest'),
+                        ],
                       ),
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    )
+                  // Dashboard content
+                  : ListView(
                       children: [
-                        Text(
-                          'Fitness Quest',
+
+                        // Welcome banner
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Welcome, $_userName!',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Track your workout goals, stay consistent, and build momentum.',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        const Text(
+                          'Quick Stats',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Track your workout goals, stay consistent, and build momentum.',
+
+                        const SizedBox(height: 12),
+
+                        // Stats row — now pulling real data
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Active Quests',
+                                value: '${_activeQuests.length}',
+                                icon: Icons.flag,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'This Week',
+                                value: '$_weeklyWorkouts',
+                                icon: Icons.local_fire_department,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'Streak',
+                                value: '🔥 $_currentStreak',
+                                icon: Icons.bolt,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        const Text(
+                          'Current Workout Quests',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+
+                        const SizedBox(height: 12),
+
+                        // Real quest cards from SQLite
+                        ..._activeQuests.map((quest) {
+                          final progress = _calculateProgress(quest);
+                          final progressPercent = (progress * 100).toInt();
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _QuestCard(
+                              title: quest['name'],
+                              subtitle:
+                                  '${quest['description'] ?? 'No description'} • ${quest['duration_weeks']} weeks',
+                              progress: progress,
+                              progressText: '$progressPercent% complete',
+                            ),
+                          );
+                        }),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Section title for quick stats
-                  const Text(
-                    'Quick Stats',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Row showing key stats like active quests and weekly workouts
-                  Row(
-                    children: const [
-                      Expanded(
-                        child: _StatCard(
-                          title: 'Active Quests',
-                          value: '2',
-                          icon: Icons.flag,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: _StatCard(
-                          title: 'This Week',
-                          value: '5',
-                          icon: Icons.local_fire_department,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Section title for active quests
-                  const Text(
-                    'Current Workout Quests',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Example quest cards (will later be replaced with real data)
-                  const _QuestCard(
-                    title: 'Strength Builder',
-                    subtitle: 'Upper body focus • 4 weeks',
-                    progress: 0.65,
-                    progressText: '65% complete',
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  const _QuestCard(
-                    title: 'Cardio Reset',
-                    subtitle: 'Endurance focus • 2 weeks',
-                    progress: 0.35,
-                    progressText: '35% complete',
-                  ),
-                ],
-              )
-
-            // If no quests exist, show this message instead
-            : const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.fitness_center, size: 50),
-                    SizedBox(height: 10),
-                    Text(
-                      'No quests yet',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text('Create your first workout quest'),
-                  ],
-                ),
-              ),
-      ),
+            ),
     );
   }
 }
 
-// This is a reusable card for displaying quick stats
+// Reusable stat card widget
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -191,8 +266,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// This represents a single workout quest card
-// It shows title, description, and progress visually
+// Quest card widget
 class _QuestCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -228,13 +302,10 @@ class _QuestCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(subtitle),
             const SizedBox(height: 12),
-
-            // Progress bar shows how far along the quest is
             LinearProgressIndicator(
               value: progress,
               borderRadius: BorderRadius.circular(12),
             ),
-
             const SizedBox(height: 8),
             Text(progressText),
           ],

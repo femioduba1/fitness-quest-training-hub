@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import '../database/crud/quest_crud.dart';
 
-// This screen is where users create a new workout quest.
-// It includes a form with inputs like name, description, duration, and weekly goal.
 class CreateQuestScreen extends StatefulWidget {
   const CreateQuestScreen({super.key});
 
@@ -10,38 +9,81 @@ class CreateQuestScreen extends StatefulWidget {
 }
 
 class _CreateQuestScreenState extends State<CreateQuestScreen> {
-
-  // This key is used to manage and validate the form
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  // Controllers used to grab input values from the text fields
   final TextEditingController _questNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  // These store the selected dropdown values
+  // Database instance
+  final QuestCrud _questCrud = QuestCrud();
+
   String selectedDuration = '1 Week';
   int selectedWeeklyGoal = 3;
+  bool _isSaving = false; // Prevents double tapping save button
 
   @override
   void dispose() {
-    // Clean up controllers when the screen is removed
     _questNameController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
-  // This function runs when the user presses "Save Quest"
-  // It validates the form and (later) will connect to SQLite
-  void _saveQuest() {
+  // Converts duration string to number of weeks for database
+  int _durationToWeeks(String duration) {
+    switch (duration) {
+      case '1 Week':
+        return 1;
+      case '2 Weeks':
+        return 2;
+      case '1 Month':
+        return 4;
+      default:
+        return 1;
+    }
+  }
+
+  // Saves the quest to SQLite
+  Future<void> _saveQuest() async {
     if (_formKey.currentState!.validate()) {
-      // For now, just show a message confirming validation worked
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Quest validated. SQLite connection can be added next.',
-          ),
-        ),
-      );
+      setState(() => _isSaving = true);
+
+      try {
+        final questId = await _questCrud.insertQuest({
+          'name': _questNameController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'duration_weeks': _durationToWeeks(selectedDuration),
+          'weekly_goal': selectedWeeklyGoal,
+          'start_date': DateTime.now().toIso8601String(),
+          'is_active': 1,
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Quest saved! ID: $questId'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Clear the form after saving
+          _questNameController.clear();
+          _descriptionController.clear();
+          setState(() {
+            selectedDuration = '1 Week';
+            selectedWeeklyGoal = 3;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save quest: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -53,7 +95,6 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        // Keeps layout clean and prevents overflow when keyboard opens
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Card(
           elevation: 2,
@@ -62,14 +103,12 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
-
-            // Form widget wraps all input fields so we can validate everything together
             child: Form(
               key: _formKey,
               child: Column(
                 children: [
 
-                  // Quest Name input (required field)
+                  // Quest Name input (required)
                   TextFormField(
                     controller: _questNameController,
                     decoration: const InputDecoration(
@@ -86,7 +125,7 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Optional description input
+                  // Optional description
                   TextFormField(
                     controller: _descriptionController,
                     maxLines: 3,
@@ -98,7 +137,7 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Dropdown for selecting how long the quest lasts
+                  // Duration dropdown
                   DropdownButtonFormField<String>(
                     value: selectedDuration,
                     decoration: const InputDecoration(
@@ -106,29 +145,18 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(
-                        value: '1 Week',
-                        child: Text('1 Week'),
-                      ),
-                      DropdownMenuItem(
-                        value: '2 Weeks',
-                        child: Text('2 Weeks'),
-                      ),
-                      DropdownMenuItem(
-                        value: '1 Month',
-                        child: Text('1 Month'),
-                      ),
+                      DropdownMenuItem(value: '1 Week', child: Text('1 Week')),
+                      DropdownMenuItem(value: '2 Weeks', child: Text('2 Weeks')),
+                      DropdownMenuItem(value: '1 Month', child: Text('1 Month')),
                     ],
                     onChanged: (value) {
-                      setState(() {
-                        selectedDuration = value!;
-                      });
+                      setState(() => selectedDuration = value!);
                     },
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Dropdown for selecting how many workouts per week
+                  // Weekly goal dropdown
                   DropdownButtonFormField<int>(
                     value: selectedWeeklyGoal,
                     decoration: const InputDecoration(
@@ -143,15 +171,13 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                       DropdownMenuItem(value: 5, child: Text('5 workouts')),
                     ],
                     onChanged: (value) {
-                      setState(() {
-                        selectedWeeklyGoal = value!;
-                      });
+                      setState(() => selectedWeeklyGoal = value!);
                     },
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Save button triggers validation and (later) database save
+                  // Save button — shows loading spinner while saving
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -161,11 +187,17 @@ class _CreateQuestScreenState extends State<CreateQuestScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _saveQuest,
-                      child: const Text(
-                        'Save Quest',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      onPressed: _isSaving ? null : _saveQuest,
+                      child: _isSaving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Save Quest',
+                              style: TextStyle(fontSize: 16),
+                            ),
                     ),
                   ),
                 ],

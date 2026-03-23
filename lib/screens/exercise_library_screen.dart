@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/sample_exercises.dart';
+import '../database/crud/exercise_crud.dart';
 
-// This screen shows the exercise library.
-// Users can search exercises by name and also filter them by difficulty.
 class ExerciseLibraryScreen extends StatefulWidget {
   const ExerciseLibraryScreen({super.key});
 
@@ -11,26 +9,63 @@ class ExerciseLibraryScreen extends StatefulWidget {
 }
 
 class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
-  // Stores what the user types into the search bar
-  String searchText = '';
+  final ExerciseCrud _exerciseCrud = ExerciseCrud();
 
-  // Stores the currently selected difficulty filter
+  String searchText = '';
   String selectedDifficulty = 'All';
+
+  List<Map<String, dynamic>> _exercises = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExercises(); // Load exercises from SQLite when screen opens
+  }
+
+  // Loads exercises from SQLite applying search and filter
+  Future<void> _loadExercises() async {
+    setState(() => _isLoading = true);
+
+    try {
+      List<Map<String, dynamic>> results;
+
+      // If user typed something, use search
+      if (searchText.isNotEmpty) {
+        results = await _exerciseCrud.searchExercises(searchText);
+
+        // Apply difficulty filter on top of search results
+        if (selectedDifficulty != 'All') {
+          results = results
+              .where((e) => e['difficulty'] == selectedDifficulty)
+              .toList();
+        }
+      } else {
+        // Otherwise use filter
+        results = await _exerciseCrud.filterExercises(
+          difficulty: selectedDifficulty == 'All' ? null : selectedDifficulty,
+        );
+      }
+
+      setState(() {
+        _exercises = results;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load exercises: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // This creates a filtered version of the exercise list
-    // based on both the search input and the selected difficulty
-    final filteredExercises = sampleExercises.where((exercise) {
-      final matchesSearch =
-          exercise.name.toLowerCase().contains(searchText.toLowerCase());
-
-      final matchesDifficulty =
-          selectedDifficulty == 'All' || exercise.difficulty == selectedDifficulty;
-
-      return matchesSearch && matchesDifficulty;
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exercise Library'),
@@ -40,7 +75,8 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           children: [
-            // Search bar updates the screen in real time as the user types
+
+            // Search bar — reloads from SQLite on every keystroke
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search exercises',
@@ -53,14 +89,13 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                 ),
               ),
               onChanged: (value) {
-                setState(() {
-                  searchText = value;
-                });
+                setState(() => searchText = value);
+                _loadExercises();
               },
             ),
             const SizedBox(height: 12),
 
-            // Dropdown lets the user filter exercises by difficulty level
+            // Difficulty filter dropdown
             DropdownButtonFormField<String>(
               value: selectedDifficulty,
               decoration: InputDecoration(
@@ -74,54 +109,53 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
               items: const [
                 DropdownMenuItem(value: 'All', child: Text('All')),
                 DropdownMenuItem(value: 'Beginner', child: Text('Beginner')),
-                DropdownMenuItem(
-                  value: 'Intermediate',
-                  child: Text('Intermediate'),
-                ),
+                DropdownMenuItem(value: 'Intermediate', child: Text('Intermediate')),
                 DropdownMenuItem(value: 'Advanced', child: Text('Advanced')),
               ],
               onChanged: (value) {
-                setState(() {
-                  selectedDifficulty = value!;
-                });
+                setState(() => selectedDifficulty = value!);
+                _loadExercises();
               },
             ),
             const SizedBox(height: 16),
 
-            // Expanded allows the list to take up the rest of the available screen space
+            // Exercise list
             Expanded(
-              child: filteredExercises.isEmpty
-                  // This message shows if no exercises match the user's filters
-                  ? const Center(
-                      child: Text(
-                        'No exercises found.',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    )
-                  // ListView.builder displays the filtered exercise list dynamically
-                  : ListView.builder(
-                      itemCount: filteredExercises.length,
-                      itemBuilder: (context, index) {
-                        final exercise = filteredExercises[index];
+              child: _isLoading
+                  // Show spinner while loading from SQLite
+                  ? const Center(child: CircularProgressIndicator())
+                  : _exercises.isEmpty
+                      // Empty state
+                      ? const Center(
+                          child: Text(
+                            'No exercises found.',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        )
+                      // Exercise cards
+                      : ListView.builder(
+                          itemCount: _exercises.length,
+                          itemBuilder: (context, index) {
+                            final exercise = _exercises[index];
 
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.fitness_center),
-                            ),
-                            title: Text(exercise.name),
-                            subtitle: Text(
-                              '${exercise.muscleGroup} • ${exercise.difficulty} • ${exercise.equipment}',
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                            return Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ListTile(
+                                leading: const CircleAvatar(
+                                  child: Icon(Icons.fitness_center),
+                                ),
+                                title: Text(exercise['name']),
+                                subtitle: Text(
+                                  '${exercise['muscle_group']} • ${exercise['difficulty']} • ${exercise['equipment'] ?? 'No equipment'}',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
