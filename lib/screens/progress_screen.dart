@@ -5,89 +5,35 @@ class ProgressScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            'Progress & Analytics',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const _ProgressStatCard(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Progress'),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        children: const [
+          _ProgressStatCard(
             title: 'Current Streak',
             value: '5 days',
             icon: Icons.local_fire_department,
           ),
-          const SizedBox(height: 12),
-          const _ProgressStatCard(
+          SizedBox(height: 12),
+          _ProgressStatCard(
             title: 'Completed Workouts',
             value: '18',
             icon: Icons.check_circle,
           ),
-          const SizedBox(height: 12),
-          const _ProgressStatCard(
+          SizedBox(height: 12),
+          _ProgressStatCard(
             title: 'Hours Trained',
             value: '12.5 hrs',
             icon: Icons.timer,
           ),
-          const SizedBox(height: 24),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: const [
-                  Text(
-                    'Weekly Activity',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  SizedBox(
-                    height: 120,
-                    child: Center(
-                      child: Text(
-                        'Chart placeholder\nPartner can connect live data here later.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: const [
-                  Text(
-                    'Progress Photos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  SizedBox(
-                    height: 100,
-                    child: Center(
-                      child: Text(
-                        'Photo timeline placeholder',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          SizedBox(height: 24),
+          _WeeklyActivityCard(),
+          SizedBox(height: 16),
+          _ProgressPhotosCard(),
         ],
       ),
     );
@@ -108,6 +54,10 @@ class _ProgressStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: ListTile(
         leading: Icon(icon),
         title: Text(title),
@@ -117,6 +67,82 @@ class _ProgressStatCard extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeeklyActivityCard extends StatelessWidget {
+  const _WeeklyActivityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text(
+              'Weekly Activity',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              height: 120,
+              child: Center(
+                child: Text(
+                  'Chart placeholder\nPartner can connect live data here later.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressPhotosCard extends StatelessWidget {
+  const _ProgressPhotosCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text(
+              'Progress Photos',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 16),
+            SizedBox(
+              height: 100,
+              child: Center(
+                child: Text(
+                  'Photo timeline placeholder',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
