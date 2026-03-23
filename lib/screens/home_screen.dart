@@ -4,6 +4,7 @@ import '../database/crud/workout_log_crud.dart';
 import '../services/streak_service.dart';
 import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
+import '../main.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadDashboard() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
     try {
       final results = await Future.wait([
         _questCrud.getActiveQuests(),
@@ -39,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _logCrud.getWeeklyWorkoutCount(),
         _prefsService.getUserName(),
       ]);
+      if (!mounted) return;
       setState(() {
         _activeQuests = results[0] as List<Map<String, dynamic>>;
         _currentStreak = results[1] as int;
@@ -47,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -61,171 +64,228 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.orange))
-          : CustomScrollView(
-              slivers: [
-                // ── SLIVER APP BAR ───────────────────────────
-                SliverAppBar(
-                  expandedHeight: 200,
-                  pinned: true,
-                  backgroundColor: AppTheme.background,
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white),
-                      onPressed: _loadDashboard,
+          : RefreshIndicator(
+              color: AppTheme.orange,
+              backgroundColor:
+                  isDark ? AppTheme.darkCard : AppTheme.lightCard,
+              displacement: 80,
+              strokeWidth: 3,
+              onRefresh: _loadDashboard,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+
+                  // ── SLIVER APP BAR ───────────────────
+                  SliverAppBar(
+                    expandedHeight: 200,
+                    pinned: true,
+                    backgroundColor: AppTheme.darkBackground,
+                    leading: IconButton(
+                      icon: const Icon(Icons.menu_rounded,
+                          color: Colors.white),
+                      onPressed: () =>
+                          menuKey.currentState?.toggleMenu(),
                     ),
-                  ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFFFF6000),
-                            Color(0xFFCC4D00),
-                          ],
+                    actions: const [],
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppTheme.orange,
+                              AppTheme.orangeDark,
+                            ],
+                          ),
                         ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              'WELCOME BACK',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _userName.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-
-                      // ── STATS ROW ────────────────────────────
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              title: 'STREAK',
-                              value: '$_currentStreak',
-                              unit: 'days',
-                              icon: Icons.local_fire_department,
-                              color: AppTheme.orange,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              title: 'THIS WEEK',
-                              value: '$_weeklyWorkouts',
-                              unit: 'workouts',
-                              icon: Icons.bolt,
-                              color: const Color(0xFF4CAF50),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              title: 'QUESTS',
-                              value: '${_activeQuests.length}',
-                              unit: 'active',
-                              icon: Icons.flag,
-                              color: const Color(0xFF2196F3),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ── ACTIVE QUESTS ────────────────────────
-                      const Text(
-                        'ACTIVE QUESTS',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 2,
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      if (_activeQuests.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cardBackground,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Column(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                              20, 60, 20, 20),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            mainAxisAlignment:
+                                MainAxisAlignment.end,
                             children: [
-                              Icon(Icons.flag_outlined,
-                                  size: 48, color: AppTheme.textSecondary),
-                              SizedBox(height: 12),
                               Text(
-                                'NO ACTIVE QUESTS',
+                                'WELCOME BACK',
                                 style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white
+                                      .withOpacity(0.7),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _userName.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
                                   letterSpacing: 1,
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Create your first quest to get started',
-                                style:
-                                    TextStyle(color: AppTheme.textSecondary),
-                                textAlign: TextAlign.center,
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.swipe_down,
+                                    color: Colors.white
+                                        .withOpacity(0.5),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Pull down to refresh',
+                                    style: TextStyle(
+                                      color: Colors.white
+                                          .withOpacity(0.5),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        )
-                      else
-                        ..._activeQuests.map((quest) {
-                          final progress = _calculateProgress(quest);
-                          final progressPercent = (progress * 100).toInt();
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _QuestCard(
-                              title: quest['name'],
-                              subtitle:
-                                  '${quest['duration_weeks']} weeks • ${quest['weekly_goal']}x/week',
-                              progress: progress,
-                              progressText: '$progressPercent%',
-                            ),
-                          );
-                        }),
-                    ]),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+
+                        // ── STATS ROW ────────────────────
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                title: 'STREAK',
+                                value: '$_currentStreak',
+                                unit: 'days',
+                                icon: Icons.local_fire_department,
+                                color: AppTheme.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'THIS WEEK',
+                                value: '$_weeklyWorkouts',
+                                unit: 'workouts',
+                                icon: Icons.bolt,
+                                color: const Color(0xFF4CAF50),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatCard(
+                                title: 'QUESTS',
+                                value: '${_activeQuests.length}',
+                                unit: 'active',
+                                icon: Icons.flag,
+                                color: const Color(0xFF2196F3),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // ── ACTIVE QUESTS ────────────────
+                        Text(
+                          'ACTIVE QUESTS',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2,
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        if (_activeQuests.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppTheme.darkCard
+                                  : AppTheme.lightCard,
+                              borderRadius:
+                                  BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.flag_outlined,
+                                  size: 48,
+                                  color: isDark
+                                      ? AppTheme.darkTextSecondary
+                                      : AppTheme.lightTextSecondary,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'NO ACTIVE QUESTS',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? AppTheme.darkTextPrimary
+                                        : AppTheme.lightTextPrimary,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Create your first quest to get started',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? AppTheme.darkTextSecondary
+                                        : AppTheme.lightTextSecondary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ..._activeQuests.map((quest) {
+                            final progress =
+                                _calculateProgress(quest);
+                            final progressPercent =
+                                (progress * 100).toInt();
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: 12),
+                              child: _QuestCard(
+                                title: quest['name'],
+                                subtitle:
+                                    '${quest['duration_weeks']} weeks • ${quest['weekly_goal']}x/week',
+                                progress: progress,
+                                progressText: '$progressPercent%',
+                              ),
+                            );
+                          }),
+
+                        const SizedBox(height: 16),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
             ),
     );
   }
@@ -248,10 +308,11 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
@@ -262,16 +323,20 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: isDark
+                  ? AppTheme.darkTextPrimary
+                  : AppTheme.lightTextPrimary,
               fontSize: 26,
               fontWeight: FontWeight.w900,
             ),
           ),
           Text(
             unit,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
+            style: TextStyle(
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
               fontSize: 11,
             ),
           ),
@@ -306,12 +371,15 @@ class _QuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.divider),
+        border: Border.all(
+          color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,8 +390,10 @@ class _QuestCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title.toUpperCase(),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTheme.darkTextPrimary
+                        : AppTheme.lightTextPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
@@ -331,8 +401,8 @@ class _QuestCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppTheme.orange.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -351,8 +421,10 @@ class _QuestCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
+            style: TextStyle(
+              color: isDark
+                  ? AppTheme.darkTextSecondary
+                  : AppTheme.lightTextSecondary,
               fontSize: 13,
             ),
           ),
@@ -362,9 +434,11 @@ class _QuestCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
-              backgroundColor: AppTheme.cardBackgroundLight,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppTheme.orange),
+              backgroundColor: isDark
+                  ? AppTheme.darkCardLight
+                  : AppTheme.lightCardLight,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppTheme.orange),
             ),
           ),
         ],

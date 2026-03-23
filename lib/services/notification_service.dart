@@ -12,8 +12,10 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  bool _initialized = false;
+
   Future<void> initialize() async {
-    // Initialize timezone database
+    if (_initialized) return;
     tz.initializeTimeZones();
 
     const androidSettings =
@@ -27,42 +29,97 @@ class NotificationService {
       android: androidSettings,
       iOS: iosSettings,
     );
+
     await _plugin.initialize(settings);
+    await _requestPermissions();
+    _initialized = true;
   }
 
-  // Send an instant motivational quote notification
+  Future<void> _requestPermissions() async {
+    // Android permissions
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+        _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+      await androidPlugin.requestExactAlarmsPermission();
+    }
+
+    // iOS permissions
+    final IOSFlutterLocalNotificationsPlugin? iosPlugin =
+        _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    if (iosPlugin != null) {
+      await iosPlugin.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
+  }
+
+  Future<void> _createNotificationChannel() async {
+    const channel = AndroidNotificationChannel(
+      'motivation_channel',
+      'Motivational Quotes',
+      description: 'Daily motivational quotes from pro bodybuilders',
+      importance: Importance.high,
+      playSound: true,
+    );
+
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+        _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(channel);
+  }
+
   Future<void> sendMotivationalQuote() async {
+    if (!_initialized) await initialize();
+    await _createNotificationChannel();
+
     final quote = AITrainerService.instance.getRandomQuote();
 
     const androidDetails = AndroidNotificationDetails(
       'motivation_channel',
       'Motivational Quotes',
-      channelDescription:
-          'Daily motivational quotes from pro bodybuilders',
-      importance: Importance.high,
+      channelDescription: 'Daily motivational quotes from pro bodybuilders',
+      importance: Importance.max,
       priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
     );
 
     const details = NotificationDetails(
       android: androidDetails,
-      iOS: DarwinNotificationDetails(),
+      iOS: iosDetails,
     );
 
-    await _plugin.show(
-      0,
-      '"${quote['quote']}"',
-      '— ${quote['author']}',
-      details,
-    );
+    try {
+      await _plugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        '"${quote['quote']}"',
+        '— ${quote['author']}',
+        details,
+      );
+      debugPrint('✅ Notification sent: ${quote['author']}');
+    } catch (e) {
+      debugPrint('❌ Notification failed: $e');
+    }
   }
 
-  // Schedule notifications throughout the day
   Future<void> scheduleMotivationalNotifications() async {
+    if (!_initialized) await initialize();
+    await _createNotificationChannel();
+
     try {
       await _plugin.cancelAll();
 
       final quotes = AITrainerService.motivationalQuotes;
-      final times = [8, 12, 17, 20]; // 8am, 12pm, 5pm, 8pm
+      final times = [8, 12, 17, 20];
 
       for (int i = 0; i < times.length; i++) {
         final quote = quotes[i % quotes.length];
@@ -77,32 +134,34 @@ class NotificationService {
             android: AndroidNotificationDetails(
               'motivation_channel',
               'Motivational Quotes',
-              channelDescription:
-                  'Daily motivational quotes from pro bodybuilders',
-              importance: Importance.high,
+              channelDescription: 'Daily motivational quotes from pro bodybuilders',
+              importance: Importance.max,
               priority: Priority.high,
+              enableVibration: true,
+              playSound: true,
             ),
-            iOS: DarwinNotificationDetails(),
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
           ),
-          androidScheduleMode:
-              AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
           matchDateTimeComponents: DateTimeComponents.time,
         );
+        debugPrint('✅ Scheduled at ${times[i]}:00');
       }
     } catch (e) {
-      // Silently fail if scheduling is not supported
-      debugPrint('Notification scheduling failed: $e');
+      debugPrint('❌ Scheduling failed: $e');
     }
   }
 
-  // Cancel all notifications
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
   }
 
-  // Helper — gets the next instance of a specific hour today or tomorrow
   tz.TZDateTime _nextInstanceOfTime(int hour) {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled =

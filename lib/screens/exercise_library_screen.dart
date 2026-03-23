@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import '../database/crud/exercise_crud.dart';
 import '../theme/app_theme.dart';
+import '../main.dart';
 import 'log_workout_sheet.dart';
 
 class ExerciseLibraryScreen extends StatefulWidget {
   const ExerciseLibraryScreen({super.key});
 
   @override
-  State<ExerciseLibraryScreen> createState() => _ExerciseLibraryScreenState();
+  State<ExerciseLibraryScreen> createState() =>
+      _ExerciseLibraryScreenState();
 }
 
-class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
+class _ExerciseLibraryScreenState
+    extends State<ExerciseLibraryScreen> {
   final ExerciseCrud _exerciseCrud = ExerciseCrud();
 
   String searchText = '';
@@ -18,7 +21,6 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   List<Map<String, dynamic>> _exercises = [];
   bool _isLoading = true;
 
-  // Color per difficulty
   Color _difficultyColor(String difficulty) {
     switch (difficulty) {
       case 'Beginner':
@@ -32,7 +34,6 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
     }
   }
 
-  // Icon per muscle group
   IconData _muscleIcon(String muscle) {
     switch (muscle) {
       case 'Chest':
@@ -57,26 +58,32 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   }
 
   Future<void> _loadExercises() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
     try {
       List<Map<String, dynamic>> results;
       if (searchText.isNotEmpty) {
-        results = await _exerciseCrud.searchExercises(searchText);
+        results =
+            await _exerciseCrud.searchExercises(searchText);
         if (selectedDifficulty != 'All') {
           results = results
-              .where((e) => e['difficulty'] == selectedDifficulty)
+              .where((e) =>
+                  e['difficulty'] == selectedDifficulty)
               .toList();
         }
       } else {
         results = await _exerciseCrud.filterExercises(
-          difficulty: selectedDifficulty == 'All' ? null : selectedDifficulty,
+          difficulty: selectedDifficulty == 'All'
+              ? null
+              : selectedDifficulty,
         );
       }
+      if (!mounted) return;
       setState(() {
         _exercises = results;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -85,222 +92,297 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
     await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.cardBackground,
+      backgroundColor:
+          Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.darkCard
+              : AppTheme.lightCard,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => LogWorkoutSheet(exercise: exercise),
+      builder: (context) =>
+          LogWorkoutSheet(exercise: exercise),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
+    final cardColor =
+        isDark ? AppTheme.darkCard : AppTheme.lightCard;
+    final borderColor =
+        isDark ? AppTheme.darkDivider : AppTheme.lightDivider;
+    final secondaryText = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    final primaryText = isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.lightTextPrimary;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('EXERCISE LIBRARY'),
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded),
+          onPressed: () =>
+              menuKey.currentState?.toggleMenu(),
+        ),
       ),
-      body: Column(
-        children: [
-          // ── SEARCH & FILTER ────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Column(
-              children: [
-                // Search bar
-                TextField(
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'Search exercises...',
-                    prefixIcon: const Icon(Icons.search,
-                        color: AppTheme.textSecondary),
-                    suffixIcon: searchText.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear,
-                                color: AppTheme.textSecondary),
-                            onPressed: () {
-                              setState(() => searchText = '');
+      body: RefreshIndicator(
+        color: AppTheme.orange,
+        backgroundColor: cardColor,
+        displacement: 80,
+        strokeWidth: 3,
+        onRefresh: _loadExercises,
+        child: Column(
+          children: [
+
+            // ── SEARCH & FILTER ──────────────────────
+            Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Column(
+                children: [
+                  TextField(
+                    style: TextStyle(color: primaryText),
+                    decoration: InputDecoration(
+                      hintText: 'Search exercises...',
+                      hintStyle:
+                          TextStyle(color: secondaryText),
+                      prefixIcon: Icon(Icons.search,
+                          color: secondaryText),
+                      suffixIcon: searchText.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear,
+                                  color: secondaryText),
+                              onPressed: () {
+                                setState(
+                                    () => searchText = '');
+                                _loadExercises();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() => searchText = value);
+                      _loadExercises();
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        'All',
+                        'Beginner',
+                        'Intermediate',
+                        'Advanced'
+                      ].map((difficulty) {
+                        final isSelected =
+                            selectedDifficulty == difficulty;
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() =>
+                                  selectedDifficulty =
+                                      difficulty);
                               _loadExercises();
                             },
-                          )
-                        : null,
-                  ),
-                  onChanged: (value) {
-                    setState(() => searchText = value);
-                    _loadExercises();
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
-                // Difficulty filter chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: ['All', 'Beginner', 'Intermediate', 'Advanced']
-                        .map((difficulty) {
-                      final isSelected = selectedDifficulty == difficulty;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() => selectedDifficulty = difficulty);
-                            _loadExercises();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.orange
-                                  : AppTheme.cardBackground,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8),
+                              decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppTheme.orange
-                                    : AppTheme.divider,
+                                    : cardColor,
+                                borderRadius:
+                                    BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.orange
+                                      : borderColor,
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              difficulty.toUpperCase(),
-                              style: TextStyle(
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppTheme.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
+                              child: Text(
+                                difficulty.toUpperCase(),
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : secondaryText,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Tap an exercise to log a workout',
+                      style: TextStyle(
+                          color: secondaryText, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
-          ),
 
-          // ── EXERCISE LIST ──────────────────────────────
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppTheme.orange))
-                : _exercises.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No exercises found.',
-                          style: TextStyle(color: AppTheme.textSecondary),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: _exercises.length,
-                        itemBuilder: (context, index) {
-                          final exercise = _exercises[index];
-                          final diffColor =
-                              _difficultyColor(exercise['difficulty']);
-
-                          return GestureDetector(
-                            onTap: () => _openLogSheet(exercise),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.cardBackground,
-                                borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: AppTheme.divider),
+            // ── EXERCISE LIST ────────────────────────
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppTheme.orange))
+                  : _exercises.isEmpty
+                      ? ListView(
+                          physics:
+                              const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: 300,
+                              child: Center(
+                                child: Text(
+                                  'No exercises found.',
+                                  style: TextStyle(
+                                      color: secondaryText),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  // Muscle icon circle
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          AppTheme.orange.withOpacity(0.15),
-                                      borderRadius:
-                                          BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      _muscleIcon(exercise['muscle_group']),
-                                      color: AppTheme.orange,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Exercise info
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          exercise['name'],
-                                          style: const TextStyle(
-                                            color: AppTheme.textPrimary,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${exercise['muscle_group']} • ${exercise['equipment'] ?? 'No equipment'}',
-                                          style: const TextStyle(
-                                            color: AppTheme.textSecondary,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Difficulty badge
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              diffColor.withOpacity(0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          exercise['difficulty']
-                                              .toString()
-                                              .toUpperCase(),
-                                          style: TextStyle(
-                                            color: diffColor,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics:
+                              const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(
+                              16, 0, 16, 16),
+                          itemCount: _exercises.length,
+                          itemBuilder: (context, index) {
+                            final exercise =
+                                _exercises[index];
+                            final diffColor =
+                                _difficultyColor(
+                                    exercise['difficulty']);
+                            return GestureDetector(
+                              onTap: () =>
+                                  _openLogSheet(exercise),
+                              child: Container(
+                                margin: const EdgeInsets.only(
+                                    bottom: 10),
+                                padding:
+                                    const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: cardColor,
+                                  borderRadius:
+                                      BorderRadius.circular(
+                                          16),
+                                  border: Border.all(
+                                      color: borderColor),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.orange
+                                            .withOpacity(0.15),
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(12),
                                       ),
-                                      const SizedBox(height: 8),
-                                      const Icon(
-                                        Icons.add_circle,
+                                      child: Icon(
+                                        _muscleIcon(exercise[
+                                            'muscle_group']),
                                         color: AppTheme.orange,
                                         size: 22,
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .start,
+                                        children: [
+                                          Text(
+                                            exercise['name'],
+                                            style: TextStyle(
+                                              color: primaryText,
+                                              fontWeight:
+                                                  FontWeight.w700,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                              height: 4),
+                                          Text(
+                                            '${exercise['muscle_group']} • ${exercise['equipment'] ?? 'No equipment'}',
+                                            style: TextStyle(
+                                              color: secondaryText,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets
+                                              .symmetric(
+                                              horizontal: 8,
+                                              vertical: 4),
+                                          decoration:
+                                              BoxDecoration(
+                                            color: diffColor
+                                                .withOpacity(0.15),
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(8),
+                                          ),
+                                          child: Text(
+                                            exercise['difficulty']
+                                                .toString()
+                                                .toUpperCase(),
+                                            style: TextStyle(
+                                              color: diffColor,
+                                              fontSize: 10,
+                                              fontWeight:
+                                                  FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Icon(
+                                          Icons.add_circle,
+                                          color: AppTheme.orange,
+                                          size: 22,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-        ],
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }
