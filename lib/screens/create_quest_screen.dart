@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../database/crud/quest_crud.dart';
 import '../database/crud/exercise_crud.dart';
+import '../services/quest_suggestion_service.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
 
-/// Create Quest Screen — allows users to create a custom quest
-/// or choose from pre-built workout split templates
+/// Create Quest Screen — allows users to create a custom quest,
+/// choose from workout split templates, or use AI-powered
+/// suggestions personalized from their onboarding profile
 class CreateQuestScreen extends StatefulWidget {
   const CreateQuestScreen({super.key});
 
@@ -29,12 +31,17 @@ class _CreateQuestScreenState
   int selectedWeeklyGoal = 5;
   bool _isSaving = false;
   String? _selectedTemplate;
+  bool _showingSuggestions = true;
 
   // All exercises from database
   List<Map<String, dynamic>> _allExercises = [];
 
   // Selected exercises with sets/reps
   List<Map<String, dynamic>> _selectedExercises = [];
+
+  // AI suggestions loaded from onboarding profile
+  List<QuestSuggestion> _suggestions = [];
+  bool _loadingSuggestions = true;
 
   // ── WORKOUT SPLIT TEMPLATES ───────────────────────────
   static const List<Map<String, dynamic>> _templates = [
@@ -45,7 +52,7 @@ class _CreateQuestScreenState
       'icon': '✏️',
       'color': 0xFF9E9E9E,
       'weeklyGoal': 3,
-      'duration': '1 Month',
+      'duration': '1 Week',
       'exercises': <String>[],
     },
     {
@@ -58,18 +65,13 @@ class _CreateQuestScreenState
       'weeklyGoal': 5,
       'duration': '1 Month',
       'exercises': [
-        // Chest Day
         'Bench Press',
         'Push-Up',
-        // Back Day
         'Pull-Up',
         'Deadlift',
-        // Legs Day
         'Squat',
         'Lunges',
-        // Arms Day
         'Bicep Curl',
-        // Core Day
         'Plank',
       ],
     },
@@ -83,14 +85,11 @@ class _CreateQuestScreenState
       'weeklyGoal': 6,
       'duration': '1 Month',
       'exercises': [
-        // Push
         'Bench Press',
         'Push-Up',
-        // Pull
         'Pull-Up',
         'Bicep Curl',
         'Deadlift',
-        // Legs
         'Squat',
         'Lunges',
         'Plank',
@@ -102,6 +101,7 @@ class _CreateQuestScreenState
   void initState() {
     super.initState();
     _loadExercises();
+    _loadSuggestions();
   }
 
   @override
@@ -111,9 +111,23 @@ class _CreateQuestScreenState
     super.dispose();
   }
 
+  /// Loads all exercises from SQLite for the picker
   Future<void> _loadExercises() async {
     final exercises = await _exerciseCrud.getAllExercises();
     if (mounted) setState(() => _allExercises = exercises);
+  }
+
+  /// Loads AI suggestions based on onboarding profile
+  Future<void> _loadSuggestions() async {
+    final suggestions =
+        await QuestSuggestionService.instance
+            .getSuggestions();
+    if (mounted) {
+      setState(() {
+        _suggestions = suggestions;
+        _loadingSuggestions = false;
+      });
+    }
   }
 
   int _durationToWeeks(String duration) {
@@ -129,6 +143,18 @@ class _CreateQuestScreenState
     }
   }
 
+  String _weeksToDuration(int weeks) {
+    switch (weeks) {
+      case 1:
+        return '1 Week';
+      case 2:
+        return '2 Weeks';
+      default:
+        return '1 Month';
+    }
+  }
+
+  /// Resets the form to default empty state
   Future<void> _resetForm() async {
     setState(() {
       _questNameController.clear();
@@ -140,13 +166,12 @@ class _CreateQuestScreenState
     });
   }
 
-  /// Applies a template to the form — auto-fills all fields
+  /// Applies a workout split template to the form
   void _applyTemplate(Map<String, dynamic> template) {
     setState(() {
       _selectedTemplate = template['id'];
 
       if (template['id'] == 'custom') {
-        // Reset to blank for custom
         _questNameController.clear();
         _descriptionController.clear();
         selectedDuration = '1 Week';
@@ -155,17 +180,15 @@ class _CreateQuestScreenState
         return;
       }
 
-      // Auto-fill quest details
       _questNameController.text = template['name'];
-      _descriptionController.text = template['description'];
+      _descriptionController.text =
+          template['description'];
       selectedDuration = template['duration'];
       selectedWeeklyGoal = template['weeklyGoal'];
 
-      // Match exercise names to database exercises
       final exerciseNames =
           List<String>.from(template['exercises']);
       _selectedExercises = [];
-
       for (final name in exerciseNames) {
         final match = _allExercises.firstWhere(
           (e) => e['name'] == name,
@@ -182,7 +205,44 @@ class _CreateQuestScreenState
     });
   }
 
-  /// Opens exercise picker bottom sheet
+  /// Applies an AI suggestion to the form
+  void _applySuggestion(QuestSuggestion suggestion) {
+    setState(() {
+      _selectedTemplate = null;
+      _questNameController.text = suggestion.name;
+      _descriptionController.text =
+          suggestion.description;
+      selectedDuration =
+          _weeksToDuration(suggestion.durationWeeks);
+      selectedWeeklyGoal = suggestion.weeklyGoal;
+
+      _selectedExercises = [];
+      for (final name in suggestion.exercises) {
+        final match = _allExercises.firstWhere(
+          (e) => e['name'] == name,
+          orElse: () => {},
+        );
+        if (match.isNotEmpty) {
+          _selectedExercises.add({
+            'exercise': match,
+            'sets': 3,
+            'reps': 10,
+          });
+        }
+      }
+      _showingSuggestions = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            '"${suggestion.name}" loaded! Customize and save.'),
+        backgroundColor: AppTheme.orange,
+      ),
+    );
+  }
+
+  /// Opens the exercise picker bottom sheet
   Future<void> _openExercisePicker() async {
     final isDark =
         Theme.of(context).brightness == Brightness.dark;
@@ -230,7 +290,7 @@ class _CreateQuestScreenState
               builder: (context, scrollController) {
                 return Column(
                   children: [
-                    // Handle
+                    // Handle bar
                     Padding(
                       padding:
                           const EdgeInsets.only(top: 12),
@@ -272,7 +332,7 @@ class _CreateQuestScreenState
                       ),
                     ),
 
-                    // Search
+                    // Search bar
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16),
@@ -294,7 +354,7 @@ class _CreateQuestScreenState
 
                     const SizedBox(height: 10),
 
-                    // Difficulty chips
+                    // Difficulty filter chips
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16),
@@ -511,6 +571,7 @@ class _CreateQuestScreenState
     );
   }
 
+  /// Saves the quest to SQLite database
   Future<void> _saveQuest() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
@@ -538,6 +599,7 @@ class _CreateQuestScreenState
             ),
           );
           await _resetForm();
+          await _loadSuggestions();
         }
       } catch (e) {
         if (mounted) {
@@ -633,15 +695,313 @@ class _CreateQuestScreenState
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+
+                // ── AI SUGGESTIONS ─────────────────────
+                GestureDetector(
+                  onTap: () => setState(() =>
+                      _showingSuggestions =
+                          !_showingSuggestions),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1a1a2e)
+                          : const Color(0xFFE8F0FF),
+                      borderRadius:
+                          BorderRadius.circular(16),
+                      border: Border.all(
+                          color: AppTheme.orange
+                              .withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppTheme.orange
+                                .withOpacity(0.15),
+                            borderRadius:
+                                BorderRadius.circular(10),
+                          ),
+                          child: const Center(
+                            child: Text('🤖',
+                                style: TextStyle(
+                                    fontSize: 20)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'AI QUEST SUGGESTIONS',
+                                style: TextStyle(
+                                  color: AppTheme.orange,
+                                  fontWeight:
+                                      FontWeight.w800,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              Text(
+                                'Personalized for your goals & level',
+                                style: TextStyle(
+                                  color: secondaryText,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          _showingSuggestions
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                          color: AppTheme.orange,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // AI suggestion cards
+                if (_showingSuggestions) ...[
+                  if (_loadingSuggestions)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: CircularProgressIndicator(
+                            color: AppTheme.orange),
+                      ),
+                    )
+                  else
+                    ..._suggestions.map((suggestion) {
+                      final color =
+                          Color(suggestion.color);
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: 10),
+                        child: GestureDetector(
+                          onTap: () =>
+                              _applySuggestion(suggestion),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius:
+                                  BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: color
+                                      .withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration:
+                                          BoxDecoration(
+                                        color: color
+                                            .withOpacity(
+                                                0.15),
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(
+                                                    12),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                            suggestion.icon,
+                                            style: const TextStyle(
+                                                fontSize:
+                                                    22)),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .start,
+                                        children: [
+                                          Text(
+                                            suggestion.name,
+                                            style: TextStyle(
+                                              color:
+                                                  primaryText,
+                                              fontWeight:
+                                                  FontWeight
+                                                      .w800,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                              height: 4),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets
+                                                    .symmetric(
+                                                    horizontal:
+                                                        6,
+                                                    vertical:
+                                                        2),
+                                                decoration:
+                                                    BoxDecoration(
+                                                  color: color
+                                                      .withOpacity(
+                                                          0.15),
+                                                  borderRadius:
+                                                      BorderRadius
+                                                          .circular(
+                                                              4),
+                                                ),
+                                                child: Text(
+                                                  '${suggestion.weeklyGoal}x/week',
+                                                  style:
+                                                      TextStyle(
+                                                    color:
+                                                        color,
+                                                    fontSize:
+                                                        10,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .w700,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                  width: 6),
+                                              Container(
+                                                padding: const EdgeInsets
+                                                    .symmetric(
+                                                    horizontal:
+                                                        6,
+                                                    vertical:
+                                                        2),
+                                                decoration:
+                                                    BoxDecoration(
+                                                  color: color
+                                                      .withOpacity(
+                                                          0.15),
+                                                  borderRadius:
+                                                      BorderRadius
+                                                          .circular(
+                                                              4),
+                                                ),
+                                                child: Text(
+                                                  _weeksToDuration(
+                                                      suggestion
+                                                          .durationWeeks),
+                                                  style:
+                                                      TextStyle(
+                                                    color:
+                                                        color,
+                                                    fontSize:
+                                                        10,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // USE button
+                                    Container(
+                                      padding:
+                                          const EdgeInsets
+                                              .symmetric(
+                                              horizontal: 12,
+                                              vertical: 6),
+                                      decoration:
+                                          BoxDecoration(
+                                        color: color
+                                            .withOpacity(
+                                                0.15),
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(20),
+                                        border: Border.all(
+                                            color: color
+                                                .withOpacity(
+                                                    0.4)),
+                                      ),
+                                      child: Text(
+                                        'USE',
+                                        style: TextStyle(
+                                          color: color,
+                                          fontWeight:
+                                              FontWeight.w800,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                // AI reason box
+                                Container(
+                                  padding:
+                                      const EdgeInsets.all(
+                                          10),
+                                  decoration: BoxDecoration(
+                                    color: color
+                                        .withOpacity(0.08),
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Text('🤖',
+                                          style: TextStyle(
+                                              fontSize: 12)),
+                                      const SizedBox(
+                                          width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          suggestion.reason,
+                                          style: TextStyle(
+                                            color:
+                                                secondaryText,
+                                            fontSize: 11,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  const SizedBox(height: 10),
+                ],
 
                 // ── TEMPLATE SELECTOR ──────────────────
                 _FieldLabel(
-                    label: 'CHOOSE A TEMPLATE',
+                    label: 'OR CHOOSE A TEMPLATE',
                     color: secondaryText),
                 const SizedBox(height: 10),
 
-                // Template cards
                 ..._templates.map((template) {
                   final isSelected =
                       _selectedTemplate == template['id'];
@@ -671,31 +1031,28 @@ class _CreateQuestScreenState
                         ),
                         child: Row(
                           children: [
-                            // Emoji icon
                             Container(
                               width: 52,
                               height: 52,
                               decoration: BoxDecoration(
-                                color: color
-                                    .withOpacity(0.15),
+                                color:
+                                    color.withOpacity(0.15),
                                 borderRadius:
                                     BorderRadius.circular(
                                         14),
                               ),
                               child: Center(
                                 child: Text(
-                                  template['icon'],
-                                  style: const TextStyle(
-                                      fontSize: 26),
-                                ),
+                                    template['icon'],
+                                    style: const TextStyle(
+                                        fontSize: 26)),
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                    CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     template['name'],
@@ -783,7 +1140,6 @@ class _CreateQuestScreenState
                                 ],
                               ),
                             ),
-                            // Selected indicator
                             if (isSelected)
                               Icon(
                                 Icons.check_circle_rounded,
@@ -1137,9 +1493,10 @@ class _CreateQuestScreenState
 
                                 const SizedBox(height: 12),
 
-                                // Sets and Reps
+                                // Sets and Reps counters
                                 Row(
                                   children: [
+                                    // Sets counter
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -1222,6 +1579,7 @@ class _CreateQuestScreenState
                                       color: borderColor,
                                     ),
 
+                                    // Reps counter
                                     Expanded(
                                       child: Padding(
                                         padding:
@@ -1311,7 +1669,7 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 32),
 
-                // ── CREATE BUTTON ──────────────────────
+                // ── CREATE QUEST BUTTON ────────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -1340,7 +1698,7 @@ class _CreateQuestScreenState
   }
 }
 
-/// Counter +/- button widget for sets and reps
+/// Counter +/- button for sets and reps
 class _CounterButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;

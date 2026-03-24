@@ -3,15 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Handles persistent user settings using SharedPreferences
 /// Used for lightweight key-value storage (theme, name, preferences)
 class PreferencesService {
-  static final PreferencesService instance =
-      PreferencesService._internal();
+  static final PreferencesService instance = PreferencesService._internal();
   PreferencesService._internal();
 
   // SharedPreferences keys
   static const String _keyUserName = 'user_name';
   static const String _keyThemeMode = 'theme_mode';
-  static const String _keyNotificationsEnabled =
-      'notifications_enabled';
+  static const String _keyNotificationsEnabled = 'notifications_enabled';
   static const String _keyWeightUnit = 'weight_unit';
   static const String _keyHasOnboarded = 'has_onboarded';
 
@@ -77,5 +75,38 @@ class PreferencesService {
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  // ── FITNESS GOAL ──────────────────────────────────────
+  Future<void> setFitnessGoal(String goal) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('fitness_goal', goal);
+  }
+
+  Future<String> getFitnessGoal() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('fitness_goal') ?? '';
+  }
+
+  // ── EXPERIENCE LEVEL ──────────────────────────────────
+  Future<void> setExperienceLevel(String level) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('experience_level', level);
+  }
+
+  Future<String> getExperienceLevel() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('experience_level') ?? '';
+  }
+
+  // ── WORKOUT FREQUENCY ─────────────────────────────────
+  Future<void> setWorkoutFrequency(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('workout_frequency', days);
+  }
+
+  Future<int> getWorkoutFrequency() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('workout_frequency') ?? 3;
   }
 }

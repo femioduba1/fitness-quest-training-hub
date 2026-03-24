@@ -6,6 +6,7 @@ import 'screens/progress_screen.dart';
 import 'screens/ai_trainer_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/progress_photos_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/preferences_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -80,7 +81,7 @@ class _FitnessQuestAppState extends State<FitnessQuestApp> {
       themeMode: _themeMode,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: const MainNavigation(),
+      home: const AppEntry(),
     );
   }
 }
@@ -92,6 +93,71 @@ final GlobalKey<SlideMenuState> menuKey =
 /// Global key to access navigation state
 final GlobalKey<_MainNavigationState> navKey =
     GlobalKey<_MainNavigationState>();
+
+/// Checks if user has completed onboarding
+/// Shows onboarding on first launch, main app otherwise
+class AppEntry extends StatefulWidget {
+  const AppEntry({super.key});
+
+  @override
+  State<AppEntry> createState() => _AppEntryState();
+}
+
+class _AppEntryState extends State<AppEntry> {
+  bool _loading = true;
+  bool _hasOnboarded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  /// Checks SharedPreferences to see if onboarding was completed
+  Future<void> _checkOnboarding() async {
+    final hasOnboarded =
+        await PreferencesService.instance.getHasOnboarded();
+    if (mounted) {
+      setState(() {
+        _hasOnboarded = hasOnboarded;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show splash screen while checking onboarding status
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: AppTheme.darkBackground,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('⚡', style: TextStyle(fontSize: 60)),
+              SizedBox(height: 16),
+              Text(
+                'FITNESS QUEST',
+                style: TextStyle(
+                  color: AppTheme.orange,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Route to onboarding or main app
+    return _hasOnboarded
+        ? const MainNavigation()
+        : const OnboardingScreen();
+  }
+}
 
 /// Main navigation shell — wraps all screens in the slide menu
 class MainNavigation extends StatefulWidget {

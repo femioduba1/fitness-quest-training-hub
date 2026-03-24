@@ -4,6 +4,8 @@ import '../theme/app_theme.dart';
 import '../main.dart';
 import '../widgets/theme_toggle.dart';
 
+/// Settings Screen — theme toggle, username, weight unit
+/// and notifications. Also contains reset onboarding for testing.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -13,7 +15,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final PreferencesService _prefs = PreferencesService.instance;
+  final PreferencesService _prefs =
+      PreferencesService.instance;
   final TextEditingController _nameController =
       TextEditingController();
 
@@ -35,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  /// Loads all saved settings from SharedPreferences
   Future<void> _loadSettings() async {
     if (!mounted) return;
     try {
@@ -58,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Called after theme toggle animation completes
   Future<void> _onThemeToggled(bool isDark) async {
     final mode = isDark ? 'dark' : 'light';
     setState(() => _themeMode = mode);
@@ -65,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     FitnessQuestApp.appKey.currentState?.updateTheme(mode);
   }
 
+  /// Saves all settings to SharedPreferences
   Future<void> _saveSettings() async {
     setState(() => _isSaving = true);
     try {
@@ -72,7 +78,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _prefs.setUserName(_nameController.text.trim()),
         _prefs.setThemeMode(_themeMode),
         _prefs.setWeightUnit(_weightUnit),
-        _prefs.setNotificationsEnabled(_notificationsEnabled),
+        _prefs.setNotificationsEnabled(
+            _notificationsEnabled),
       ]);
       FitnessQuestApp.appKey.currentState
           ?.updateTheme(_themeMode);
@@ -98,15 +105,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Clears all preferences and resets to defaults
   Future<void> _resetSettings() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Settings'),
-        content: const Text('Reset all settings to default?'),
+        content:
+            const Text('Reset all settings to default?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () =>
+                Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           TextButton(
@@ -121,7 +131,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirm == true) {
       await _prefs.clearAll();
       await _loadSettings();
-      FitnessQuestApp.appKey.currentState?.updateTheme('dark');
+      FitnessQuestApp.appKey.currentState
+          ?.updateTheme('dark');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -130,6 +141,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       }
+    }
+  }
+
+  /// Resets onboarding flag so it shows again on next launch
+  Future<void> _resetOnboarding() async {
+    await _prefs.setHasOnboarded(false);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Onboarding reset — restart app to see it'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     }
   }
 
@@ -192,12 +217,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: TextField(
                         controller: _nameController,
-                        style: TextStyle(color: primaryText),
+                        style:
+                            TextStyle(color: primaryText),
                         decoration: InputDecoration(
                           labelText: 'Your Name',
-                          labelStyle:
-                              TextStyle(color: secondaryText),
-                          prefixIcon: const Icon(Icons.person,
+                          labelStyle: TextStyle(
+                              color: secondaryText),
+                          prefixIcon: const Icon(
+                              Icons.person,
                               color: AppTheme.orange),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
@@ -291,18 +318,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     const SizedBox(width: 12),
                                     Text('Weight Unit',
                                         style: TextStyle(
-                                            color: primaryText)),
+                                            color:
+                                                primaryText)),
                                   ],
                                 ),
                                 Row(
-                                  children:
-                                      ['lbs', 'kg'].map((unit) {
+                                  children: ['lbs', 'kg']
+                                      .map((unit) {
                                     final isSelected =
                                         _weightUnit == unit;
                                     return Padding(
                                       padding:
-                                          const EdgeInsets.only(
-                                              left: 8),
+                                          const EdgeInsets
+                                              .only(left: 8),
                                       child: GestureDetector(
                                         onTap: () => setState(
                                             () =>
@@ -316,7 +344,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           decoration:
                                               BoxDecoration(
                                             color: isSelected
-                                                ? AppTheme.orange
+                                                ? AppTheme
+                                                    .orange
                                                 : isDark
                                                     ? AppTheme
                                                         .darkCardLight
@@ -324,16 +353,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                         .lightCardLight,
                                             borderRadius:
                                                 BorderRadius
-                                                    .circular(8),
+                                                    .circular(
+                                                        8),
                                           ),
                                           child: Text(
                                             unit.toUpperCase(),
                                             style: TextStyle(
                                               color: isSelected
-                                                  ? Colors.white
+                                                  ? Colors
+                                                      .white
                                                   : secondaryText,
                                               fontWeight:
-                                                  FontWeight.w700,
+                                                  FontWeight
+                                                      .w700,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -346,15 +378,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
 
-                          Divider(height: 1, color: borderColor),
+                          Divider(
+                              height: 1,
+                              color: borderColor),
 
-                          // Notifications
+                          // Notifications toggle
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                            padding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8),
                             child: Row(
                               mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  MainAxisAlignment
+                                      .spaceBetween,
                               children: [
                                 Row(
                                   children: [
@@ -365,24 +402,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     const SizedBox(width: 12),
                                     Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                          CrossAxisAlignment
+                                              .start,
                                       children: [
                                         Text('Notifications',
                                             style: TextStyle(
-                                                color: primaryText)),
-                                        Text('Workout reminders',
+                                                color:
+                                                    primaryText)),
+                                        Text(
+                                            'Workout reminders',
                                             style: TextStyle(
-                                                color: secondaryText,
+                                                color:
+                                                    secondaryText,
                                                 fontSize: 12)),
                                       ],
                                     ),
                                   ],
                                 ),
                                 Switch(
-                                  value: _notificationsEnabled,
-                                  onChanged: (value) => setState(
-                                      () => _notificationsEnabled =
-                                          value),
+                                  value:
+                                      _notificationsEnabled,
+                                  onChanged: (value) =>
+                                      setState(() =>
+                                          _notificationsEnabled =
+                                              value),
                                 ),
                               ],
                             ),
@@ -414,12 +457,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 12),
 
-                    // ── RESET BUTTON ──────────────────
+                    // ── RESET SETTINGS BUTTON ─────────
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: _resetSettings,
-                        child: const Text('RESET TO DEFAULT'),
+                        child:
+                            const Text('RESET TO DEFAULT'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // ── RESET ONBOARDING BUTTON ───────
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(
+                            Icons.restart_alt_rounded,
+                            size: 16),
+                        label: const Text(
+                            'RESET ONBOARDING'),
+                        onPressed: _resetOnboarding,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                          side: const BorderSide(
+                              color: Colors.blue),
+                        ),
                       ),
                     ),
 
