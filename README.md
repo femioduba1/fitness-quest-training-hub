@@ -18,7 +18,6 @@
 [![Commits](https://img.shields.io/badge/Commits-26+-4CAF50?style=flat-square&labelColor=1C1C1C)](https://github.com/femioduba1/fitness-quest-training-hub/commits)
 [![Screens](https://img.shields.io/badge/Screens-8-2196F3?style=flat-square&labelColor=1C1C1C)](https://github.com/femioduba1/fitness-quest-training-hub)
 [![Exercises](https://img.shields.io/badge/Exercises-60+-9C27B0?style=flat-square&labelColor=1C1C1C)](https://github.com/femioduba1/fitness-quest-training-hub)
-[![Bonus](https://img.shields.io/badge/Bonus_Points-+10-FFC107?style=flat-square&labelColor=1C1C1C)](https://github.com/femioduba1/fitness-quest-training-hub)
 
 </div>
 
@@ -71,14 +70,6 @@ The app guides users through a personalized 3-page onboarding flow collecting th
 </td>
 </tr>
 </table>
-
-### 🏆 Bonus Features
-| Feature | Points | Status |
-|---|---|---|
-| Dark / Light animated theme toggle | +3 | ✅ Implemented |
-| Advanced search with muscle group + difficulty filters | +3 | ✅ Implemented |
-| Data visualization with fl_chart animated charts | +4 | ✅ Implemented |
-| **Total Bonus** | **+10** | |
 
 ---
 
