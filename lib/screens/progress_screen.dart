@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../main.dart';
 import 'charts_screen.dart';
 import 'ai_trainer_screen.dart';
+import 'progress_photos_screen.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -193,7 +194,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       child: const Row(
                         children: [
                           Icon(Icons.analytics,
-                              color: Colors.white, size: 28),
+                              color: Colors.white,
+                              size: 28),
                           SizedBox(width: 14),
                           Expanded(
                             child: Column(
@@ -204,7 +206,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                   'CHARTS & ML ANALYSIS',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight:
+                                        FontWeight.w800,
                                     fontSize: 13,
                                     letterSpacing: 0.5,
                                   ),
@@ -221,7 +224,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                             ),
                           ),
                           Icon(Icons.arrow_forward_ios,
-                              color: Colors.white, size: 16),
+                              color: Colors.white,
+                              size: 16),
                         ],
                       ),
                     ),
@@ -596,19 +600,63 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       label: 'PROGRESS PHOTOS',
                       color: secondaryText),
                   const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: borderColor),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              const ProgressPhotosScreen()),
                     ),
-                    child: Center(
-                      child: Text(
-                        'Photo timeline coming soon',
-                        style: TextStyle(
-                            color: secondaryText,
-                            fontSize: 14),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppTheme.orange
+                                  .withOpacity(0.15),
+                              borderRadius:
+                                  BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.add_a_photo_rounded,
+                              color: AppTheme.orange,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'PROGRESS PHOTOS',
+                                  style: TextStyle(
+                                    color: primaryText,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                Text(
+                                  'Track your transformation over time',
+                                  style: TextStyle(
+                                      color: secondaryText,
+                                      fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios,
+                              color: AppTheme.orange, size: 16),
+                        ],
                       ),
                     ),
                   ),

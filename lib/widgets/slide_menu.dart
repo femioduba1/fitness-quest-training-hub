@@ -40,18 +40,12 @@ class SlideMenuState extends State<SlideMenu>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(-0.1, 0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _scaleAnimation = Tween<double>(
       begin: 0.95,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -161,6 +155,12 @@ class _MenuOverlay extends StatelessWidget {
       sublabel: 'Theme, profile & preferences',
       icon: Icons.settings_rounded,
     ),
+    _MenuItem(
+      index: 6,
+      label: 'Progress Photos',
+      sublabel: 'Track your transformation',
+      icon: Icons.photo_library_rounded,
+    ),
   ];
 
   @override
@@ -178,21 +178,16 @@ class _MenuOverlay extends StatelessWidget {
               // Prevent taps on menu from closing
               onTap: () {},
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   // ── HEADER ────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        28, 20, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(28, 20, 20, 0),
                     child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'FITNESS',
@@ -223,10 +218,8 @@ class _MenuOverlay extends StatelessWidget {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: Colors.black
-                                  .withOpacity(0.15),
-                              borderRadius:
-                                  BorderRadius.circular(12),
+                              color: Colors.black.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
                               Icons.close_rounded,
@@ -243,8 +236,7 @@ class _MenuOverlay extends StatelessWidget {
 
                   // Divider
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28),
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: Divider(
                       color: Colors.black.withOpacity(0.2),
                       thickness: 1,
@@ -256,20 +248,16 @@ class _MenuOverlay extends StatelessWidget {
                   // ── MENU ITEMS ─────────────────────
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: _items.length,
                       itemBuilder: (context, index) {
                         final item = _items[index];
-                        final isActive =
-                            item.index == currentIndex;
+                        final isActive = item.index == currentIndex;
                         return _AnimatedMenuItem(
                           item: item,
                           isActive: isActive,
-                          delay: Duration(
-                              milliseconds: 50 * index),
-                          onTap: () =>
-                              onNavigate(item.index),
+                          delay: Duration(milliseconds: 50 * index),
+                          onTap: () => onNavigate(item.index),
                         );
                       },
                     ),
@@ -277,13 +265,11 @@ class _MenuOverlay extends StatelessWidget {
 
                   // ── FOOTER ─────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        28, 0, 28, 24),
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
                     child: Text(
                       'FITNESS QUEST • CSC 4360',
                       style: TextStyle(
-                        color:
-                            Colors.black.withOpacity(0.4),
+                        color: Colors.black.withOpacity(0.4),
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 2,
@@ -314,12 +300,10 @@ class _AnimatedMenuItem extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedMenuItem> createState() =>
-      _AnimatedMenuItemState();
+  State<_AnimatedMenuItem> createState() => _AnimatedMenuItemState();
 }
 
-class _AnimatedMenuItemState
-    extends State<_AnimatedMenuItem>
+class _AnimatedMenuItemState extends State<_AnimatedMenuItem>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnim;
@@ -336,15 +320,9 @@ class _AnimatedMenuItemState
     _slideAnim = Tween<Offset>(
       begin: const Offset(-0.3, 0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    _fadeAnim = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    );
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -367,8 +345,7 @@ class _AnimatedMenuItemState
           onTap: widget.onTap,
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: widget.isActive
                   ? Colors.black.withOpacity(0.15)
@@ -390,22 +367,16 @@ class _AnimatedMenuItemState
                     color: widget.isActive
                         ? Colors.black.withOpacity(0.2)
                         : Colors.black.withOpacity(0.1),
-                    borderRadius:
-                        BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    widget.item.icon,
-                    color: Colors.black,
-                    size: 22,
-                  ),
+                  child: Icon(widget.item.icon, color: Colors.black, size: 22),
                 ),
                 const SizedBox(width: 16),
 
                 // Label + sublabel
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.item.label.toUpperCase(),
@@ -419,8 +390,7 @@ class _AnimatedMenuItemState
                       Text(
                         widget.item.sublabel,
                         style: TextStyle(
-                          color: Colors.black
-                              .withOpacity(0.6),
+                          color: Colors.black.withOpacity(0.6),
                           fontSize: 12,
                         ),
                       ),

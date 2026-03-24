@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/crud/quest_crud.dart';
+import '../database/crud/exercise_crud.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
 
@@ -20,10 +21,24 @@ class _CreateQuestScreenState
   final TextEditingController _descriptionController =
       TextEditingController();
   final QuestCrud _questCrud = QuestCrud();
+  final ExerciseCrud _exerciseCrud = ExerciseCrud();
 
   String selectedDuration = '1 Week';
   int selectedWeeklyGoal = 3;
   bool _isSaving = false;
+
+  // All exercises from database
+  List<Map<String, dynamic>> _allExercises = [];
+
+  // Selected exercises with sets/reps
+  // { exercise: {...}, sets: 3, reps: 10 }
+  List<Map<String, dynamic>> _selectedExercises = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExercises();
+  }
 
   @override
   void dispose() {
@@ -32,16 +47,17 @@ class _CreateQuestScreenState
     super.dispose();
   }
 
+  Future<void> _loadExercises() async {
+    final exercises = await _exerciseCrud.getAllExercises();
+    if (mounted) setState(() => _allExercises = exercises);
+  }
+
   int _durationToWeeks(String duration) {
     switch (duration) {
-      case '1 Week':
-        return 1;
-      case '2 Weeks':
-        return 2;
-      case '1 Month':
-        return 4;
-      default:
-        return 1;
+      case '1 Week': return 1;
+      case '2 Weeks': return 2;
+      case '1 Month': return 4;
+      default: return 1;
     }
   }
 
@@ -51,7 +67,322 @@ class _CreateQuestScreenState
       _descriptionController.clear();
       selectedDuration = '1 Week';
       selectedWeeklyGoal = 3;
+      _selectedExercises = [];
     });
+  }
+
+  // Opens exercise picker bottom sheet
+  Future<void> _openExercisePicker() async {
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
+    final cardColor =
+        isDark ? AppTheme.darkCard : AppTheme.lightCard;
+    final primaryText = isDark
+        ? AppTheme.darkTextPrimary
+        : AppTheme.lightTextPrimary;
+    final secondaryText = isDark
+        ? AppTheme.darkTextSecondary
+        : AppTheme.lightTextSecondary;
+    final borderColor =
+        isDark ? AppTheme.darkDivider : AppTheme.lightDivider;
+
+    String searchText = '';
+    String filterDifficulty = 'All';
+    List<Map<String, dynamic>> filtered = _allExercises;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            // Filter exercises
+            filtered = _allExercises.where((e) {
+              final matchesSearch = e['name']
+                  .toString()
+                  .toLowerCase()
+                  .contains(searchText.toLowerCase());
+              final matchesDifficulty =
+                  filterDifficulty == 'All' ||
+                      e['difficulty'] == filterDifficulty;
+              return matchesSearch && matchesDifficulty;
+            }).toList();
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              maxChildSize: 0.95,
+              minChildSize: 0.5,
+              expand: false,
+              builder: (context, scrollController) {
+                return Column(
+                  children: [
+                    // Handle
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: borderColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          20, 16, 20, 8),
+                      child: Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'SELECT EXERCISES',
+                            style: TextStyle(
+                              color: primaryText,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close,
+                                color: secondaryText),
+                            onPressed: () =>
+                                Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Search bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16),
+                      child: TextField(
+                        style: TextStyle(color: primaryText),
+                        decoration: InputDecoration(
+                          hintText: 'Search exercises...',
+                          hintStyle:
+                              TextStyle(color: secondaryText),
+                          prefixIcon: Icon(Icons.search,
+                              color: secondaryText),
+                        ),
+                        onChanged: (value) =>
+                            setSheetState(
+                                () => searchText = value),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Difficulty filter chips
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            'All',
+                            'Beginner',
+                            'Intermediate',
+                            'Advanced'
+                          ].map((d) {
+                            final isSelected =
+                                filterDifficulty == d;
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                  right: 8),
+                              child: GestureDetector(
+                                onTap: () => setSheetState(
+                                    () =>
+                                        filterDifficulty = d),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppTheme.orange
+                                        : isDark
+                                            ? AppTheme.darkCardLight
+                                            : AppTheme.lightCardLight,
+                                    borderRadius:
+                                        BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    d.toUpperCase(),
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : secondaryText,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Divider(color: borderColor, height: 1),
+
+                    // Exercise list
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(12),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final exercise = filtered[index];
+                          final isSelected =
+                              _selectedExercises.any((e) =>
+                                  e['exercise']['id'] ==
+                                  exercise['id']);
+
+                          return GestureDetector(
+                            onTap: () {
+                              if (isSelected) {
+                                setState(() {
+                                  _selectedExercises
+                                      .removeWhere((e) =>
+                                          e['exercise']['id'] ==
+                                          exercise['id']);
+                                });
+                                setSheetState(() {});
+                              } else {
+                                setState(() {
+                                  _selectedExercises.add({
+                                    'exercise': exercise,
+                                    'sets': 3,
+                                    'reps': 10,
+                                  });
+                                });
+                                setSheetState(() {});
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(
+                                  bottom: 8),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppTheme.orange
+                                        .withOpacity(0.1)
+                                    : isDark
+                                        ? AppTheme.darkCardLight
+                                        : AppTheme.lightCardLight,
+                                borderRadius:
+                                    BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.orange
+                                      : borderColor,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Check or muscle icon
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppTheme.orange
+                                          : AppTheme.orange
+                                              .withOpacity(0.15),
+                                      borderRadius:
+                                          BorderRadius.circular(
+                                              10),
+                                    ),
+                                    child: Icon(
+                                      isSelected
+                                          ? Icons.check_rounded
+                                          : Icons.fitness_center,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppTheme.orange,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment
+                                              .start,
+                                      children: [
+                                        Text(
+                                          exercise['name'],
+                                          style: TextStyle(
+                                            color: primaryText,
+                                            fontWeight:
+                                                FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${exercise['muscle_group']} • ${exercise['difficulty']}',
+                                          style: TextStyle(
+                                            color: secondaryText,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: AppTheme.orange,
+                                      size: 20,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Done button
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              Navigator.pop(context),
+                          child: Text(
+                            _selectedExercises.isEmpty
+                                ? 'SKIP'
+                                : 'DONE — ${_selectedExercises.length} EXERCISE${_selectedExercises.length > 1 ? 'S' : ''} SELECTED',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _saveQuest() async {
@@ -69,8 +400,12 @@ class _CreateQuestScreenState
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Quest created! Time to grind 💪'),
+            SnackBar(
+              content: Text(
+                _selectedExercises.isEmpty
+                    ? 'Quest created! 💪'
+                    : 'Quest created with ${_selectedExercises.length} exercises! 💪',
+              ),
               backgroundColor: AppTheme.orange,
             ),
           );
@@ -129,7 +464,7 @@ class _CreateQuestScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                // ── HEADER BANNER ──────────────────────
+                // ── HEADER BANNER ────────────────────
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -170,7 +505,7 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 24),
 
-                // ── QUEST NAME ─────────────────────────
+                // ── QUEST NAME ────────────────────────
                 _FieldLabel(
                     label: 'QUEST NAME',
                     color: secondaryText),
@@ -180,8 +515,8 @@ class _CreateQuestScreenState
                   style: TextStyle(color: primaryText),
                   decoration: const InputDecoration(
                     hintText: 'e.g. 30-Day Strength Builder',
-                    prefixIcon: Icon(Icons.flag,
-                        color: AppTheme.orange),
+                    prefixIcon:
+                        Icon(Icons.flag, color: AppTheme.orange),
                   ),
                   validator: (value) {
                     if (value == null ||
@@ -194,7 +529,7 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 20),
 
-                // ── DESCRIPTION ────────────────────────
+                // ── DESCRIPTION ───────────────────────
                 _FieldLabel(
                     label: 'DESCRIPTION (OPTIONAL)',
                     color: secondaryText),
@@ -212,7 +547,7 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 20),
 
-                // ── DURATION ───────────────────────────
+                // ── DURATION ──────────────────────────
                 _FieldLabel(
                     label: 'DURATION',
                     color: secondaryText),
@@ -231,8 +566,8 @@ class _CreateQuestScreenState
                               () => selectedDuration =
                                   duration),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14),
+                            padding: const EdgeInsets
+                                .symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppTheme.orange
@@ -266,7 +601,7 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 20),
 
-                // ── WEEKLY GOAL ────────────────────────
+                // ── WEEKLY GOAL ───────────────────────
                 _FieldLabel(
                     label: 'WEEKLY GOAL',
                     color: secondaryText),
@@ -281,11 +616,10 @@ class _CreateQuestScreenState
                             const EdgeInsets.only(right: 6),
                         child: GestureDetector(
                           onTap: () => setState(
-                              () => selectedWeeklyGoal =
-                                  goal),
+                              () => selectedWeeklyGoal = goal),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14),
+                            padding: const EdgeInsets
+                                .symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppTheme.orange
@@ -325,9 +659,332 @@ class _CreateQuestScreenState
                   ),
                 ),
 
+                const SizedBox(height: 24),
+
+                // ── EXERCISES ─────────────────────────
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                  children: [
+                    _FieldLabel(
+                        label: 'EXERCISES',
+                        color: secondaryText),
+                    GestureDetector(
+                      onTap: _openExercisePicker,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color:
+                              AppTheme.orange.withOpacity(0.15),
+                          borderRadius:
+                              BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.add,
+                                color: AppTheme.orange,
+                                size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'ADD',
+                              style: TextStyle(
+                                color: AppTheme.orange,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // Exercise list or empty state
+                _selectedExercises.isEmpty
+                    ? GestureDetector(
+                        onTap: _openExercisePicker,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius:
+                                BorderRadius.circular(14),
+                            border: Border.all(
+                              color: borderColor,
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.fitness_center,
+                                color: secondaryText,
+                                size: 32,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No exercises added yet',
+                                style: TextStyle(
+                                    color: primaryText,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap to browse the exercise library',
+                                style: TextStyle(
+                                    color: secondaryText,
+                                    fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: _selectedExercises
+                            .asMap()
+                            .entries
+                            .map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+                          final exercise =
+                              item['exercise'] as Map<String,
+                                  dynamic>;
+
+                          return Container(
+                            margin: const EdgeInsets.only(
+                                bottom: 10),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius:
+                                  BorderRadius.circular(14),
+                              border:
+                                  Border.all(color: borderColor),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.orange
+                                            .withOpacity(0.15),
+                                        borderRadius:
+                                            BorderRadius.circular(
+                                                10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.fitness_center,
+                                        color: AppTheme.orange,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .start,
+                                        children: [
+                                          Text(
+                                            exercise['name'],
+                                            style: TextStyle(
+                                              color: primaryText,
+                                              fontWeight:
+                                                  FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${exercise['muscle_group']} • ${exercise['difficulty']}',
+                                            style: TextStyle(
+                                              color: secondaryText,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Remove button
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons
+                                            .remove_circle_outline,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedExercises
+                                              .removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                // Sets and Reps row
+                                Row(
+                                  children: [
+                                    // Sets
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment
+                                                .start,
+                                        children: [
+                                          Text(
+                                            'SETS',
+                                            style: TextStyle(
+                                              color: secondaryText,
+                                              fontSize: 10,
+                                              fontWeight:
+                                                  FontWeight.w700,
+                                              letterSpacing: 1,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                              height: 6),
+                                          Row(
+                                            children: [
+                                              _CounterButton(
+                                                icon: Icons.remove,
+                                                onTap: () {
+                                                  if (item[
+                                                          'sets'] >
+                                                      1) {
+                                                    setState(() {
+                                                      _selectedExercises[
+                                                              index]
+                                                          ['sets'] = item['sets'] - 1;
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                              const SizedBox(
+                                                  width: 12),
+                                              Text(
+                                                '${item['sets']}',
+                                                style: TextStyle(
+                                                  color: primaryText,
+                                                  fontWeight:
+                                                      FontWeight
+                                                          .w900,
+                                                  fontSize: 18,
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                  width: 12),
+                                              _CounterButton(
+                                                icon: Icons.add,
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedExercises[
+                                                            index]
+                                                        ['sets'] = item['sets'] + 1;
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    Container(
+                                      width: 1,
+                                      height: 40,
+                                      color: borderColor,
+                                    ),
+
+                                    // Reps
+                                    Expanded(
+                                      child: Padding(
+                                        padding:
+                                            const EdgeInsets.only(
+                                                left: 16),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment
+                                                  .start,
+                                          children: [
+                                            Text(
+                                              'REPS',
+                                              style: TextStyle(
+                                                color:
+                                                    secondaryText,
+                                                fontSize: 10,
+                                                fontWeight:
+                                                    FontWeight.w700,
+                                                letterSpacing: 1,
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                                height: 6),
+                                            Row(
+                                              children: [
+                                                _CounterButton(
+                                                  icon:
+                                                      Icons.remove,
+                                                  onTap: () {
+                                                    if (item[
+                                                            'reps'] >
+                                                        1) {
+                                                      setState(() {
+                                                        _selectedExercises[index]['reps'] = item['reps'] - 1;
+                                                      });
+                                                    }
+                                                  },
+                                                ),
+                                                const SizedBox(
+                                                    width: 12),
+                                                Text(
+                                                  '${item['reps']}',
+                                                  style: TextStyle(
+                                                    color:
+                                                        primaryText,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .w900,
+                                                    fontSize: 18,
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                    width: 12),
+                                                _CounterButton(
+                                                  icon: Icons.add,
+                                                  onTap: () {
+                                                    setState(() {
+                                                      _selectedExercises[index]['reps'] = item['reps'] + 1;
+                                                    });
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
                 const SizedBox(height: 32),
 
-                // ── SAVE BUTTON ────────────────────────
+                // ── CREATE QUEST BUTTON ───────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -349,6 +1006,37 @@ class _CreateQuestScreenState
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Counter +/- button widget
+class _CounterButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CounterButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppTheme.darkCardLight
+              : AppTheme.lightCardLight,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: AppTheme.orange),
       ),
     );
   }

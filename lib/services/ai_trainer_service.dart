@@ -1,18 +1,21 @@
+import 'package:flutter/material.dart';
 import '../database/crud/workout_log_crud.dart';
 import '../database/crud/quest_crud.dart';
 import '../services/streak_service.dart';
-import 'package:flutter/material.dart';
 
+/// Rule-based AI Trainer that analyzes workout history and provides
+/// personalized recommendations without any external API.
+/// All logic runs locally on-device using SQLite data.
 class AITrainerService {
-  static final AITrainerService instance = AITrainerService._internal();
+  static final AITrainerService instance =
+      AITrainerService._internal();
   AITrainerService._internal();
 
   final WorkoutLogCrud _logCrud = WorkoutLogCrud();
   final QuestCrud _questCrud = QuestCrud();
   final StreakService _streakService = StreakService.instance;
 
-  // ── MUSCLE GROUP RECOVERY RULES ──────────────────────────
-  // How many days each muscle group needs to recover
+  /// How many days each muscle group needs to recover before training again
   static const Map<String, int> _recoveryDays = {
     'Chest': 2,
     'Back': 2,
@@ -22,30 +25,37 @@ class AITrainerService {
     'Shoulders': 2,
   };
 
-  // ── MOTIVATIONAL QUOTES ──────────────────────────────────
+  /// Motivational quotes from professional bodybuilders and athletes
+  /// Rotated daily and sent as push notifications
   static const List<Map<String, String>> motivationalQuotes = [
     {
-      'quote': 'The last three or four reps is what makes the muscle grow.',
+      'quote':
+          'The last three or four reps is what makes the muscle grow.',
       'author': 'Arnold Schwarzenegger',
     },
     {
-      'quote': 'If you want something you\'ve never had, you must be willing to do something you\'ve never done.',
+      'quote':
+          'If you want something you\'ve never had, you must be willing to do something you\'ve never done.',
       'author': 'Arnold Schwarzenegger',
     },
     {
-      'quote': 'You shall gain, but you shall pay with sweat, blood, and vomit.',
+      'quote':
+          'You shall gain, but you shall pay with sweat, blood, and vomit.',
       'author': 'Pavel Tsatsouline',
     },
     {
-      'quote': 'The pain you feel today will be the strength you feel tomorrow.',
+      'quote':
+          'The pain you feel today will be the strength you feel tomorrow.',
       'author': 'Arnold Schwarzenegger',
     },
     {
-      'quote': 'No citizen has a right to be an amateur in the matter of physical training.',
+      'quote':
+          'No citizen has a right to be an amateur in the matter of physical training.',
       'author': 'Socrates',
     },
     {
-      'quote': 'Strength does not come from the physical capacity. It comes from an indomitable will.',
+      'quote':
+          'Strength does not come from the physical capacity. It comes from an indomitable will.',
       'author': 'Mahatma Gandhi',
     },
     {
@@ -53,11 +63,13 @@ class AITrainerService {
       'author': 'Napoleon Hill',
     },
     {
-      'quote': 'You have to think it before you can do it. The mind is what makes it all possible.',
+      'quote':
+          'You have to think it before you can do it. The mind is what makes it all possible.',
       'author': 'Kai Greene',
     },
     {
-      'quote': 'Everybody wants to be a bodybuilder, but nobody wants to lift no heavy-ass weights.',
+      'quote':
+          'Everybody wants to be a bodybuilder, but nobody wants to lift no heavy-ass weights.',
       'author': 'Ronnie Coleman',
     },
     {
@@ -65,7 +77,8 @@ class AITrainerService {
       'author': 'Ronnie Coleman',
     },
     {
-      'quote': 'I do it as a therapy. I do it as something that makes me feel good.',
+      'quote':
+          'I do it as a therapy. I do it as something that makes me feel good.',
       'author': 'Arnold Schwarzenegger',
     },
     {
@@ -74,15 +87,19 @@ class AITrainerService {
     },
   ];
 
-  // ── GET ALL RECOMMENDATIONS ──────────────────────────────
+  // ── MAIN ENTRY POINT ─────────────────────────────────────
+
+  /// Runs all 4 analysis rules in parallel and returns a
+  /// priority-sorted list of recommendations for the user
   Future<List<AIRecommendation>> getRecommendations() async {
     final List<AIRecommendation> recommendations = [];
 
+    // Run each rule independently
     final muscleRec = await _getMuscleGroupRecommendation();
     if (muscleRec != null) recommendations.add(muscleRec);
 
-    final overworkRec = await _getOverworkWarnings();
-    recommendations.addAll(overworkRec);
+    final overworkRecs = await _getOverworkWarnings();
+    recommendations.addAll(overworkRecs);
 
     final restRec = await _getRestDayRecommendation();
     if (restRec != null) recommendations.add(restRec);
@@ -90,28 +107,33 @@ class AITrainerService {
     final goalRec = await _getWeeklyGoalNudge();
     if (goalRec != null) recommendations.add(goalRec);
 
-    // If nothing to show, add a default motivational tip
+    // If no rules fired, show a default motivational tip
     if (recommendations.isEmpty) {
       recommendations.add(AIRecommendation(
         type: RecommendationType.tip,
         title: 'Ready to Train!',
-        message: 'All muscle groups are recovered. Pick any exercise and get after it!',
+        message:
+            'All muscle groups are recovered. Pick any exercise and get after it!',
         icon: '💪',
         priority: 0,
       ));
     }
 
-    // Sort by priority — highest first
+    // Sort by priority — highest first so most urgent shows at top
     recommendations.sort((a, b) => b.priority.compareTo(a.priority));
     return recommendations;
   }
 
-  // ── RULE 1: SUGGEST MUSCLE GROUP ─────────────────────────
+  // ── RULE 1: MUSCLE GROUP SUGGESTION ──────────────────────
+
+  /// Finds the muscle group that has been resting the longest
+  /// and is fully recovered based on the recovery days map.
+  /// Returns a suggestion to train that muscle group today.
   Future<AIRecommendation?> _getMuscleGroupRecommendation() async {
     final logs = await _logCrud.getLogsWithExerciseNames();
     final now = DateTime.now();
 
-    // Find which muscle groups were recently trained
+    // Build a map of muscle group → most recent training date
     final Map<String, DateTime> lastTrained = {};
     for (final log in logs) {
       final muscleGroup = log['muscle_group'] as String? ?? '';
@@ -122,13 +144,15 @@ class AITrainerService {
       }
     }
 
-    // Find muscle groups ready to train
+    // Find all muscle groups that have recovered
     final List<String> readyMuscles = [];
     for (final entry in _recoveryDays.entries) {
       final muscle = entry.key;
       final recovery = entry.value;
+
       if (!lastTrained.containsKey(muscle)) {
-        readyMuscles.add(muscle); // Never trained
+        // Never trained — definitely ready
+        readyMuscles.add(muscle);
       } else {
         final daysSince =
             now.difference(lastTrained[muscle]!).inDays;
@@ -140,11 +164,11 @@ class AITrainerService {
 
     if (readyMuscles.isEmpty) return null;
 
-    // Prioritize muscles not trained recently
+    // Prioritize the muscle group that has been resting the longest
     readyMuscles.sort((a, b) {
       final aDate = lastTrained[a] ?? DateTime(2000);
       final bDate = lastTrained[b] ?? DateTime(2000);
-      return aDate.compareTo(bDate); // Oldest first
+      return aDate.compareTo(bDate);
     });
 
     final suggested = readyMuscles.first;
@@ -158,12 +182,17 @@ class AITrainerService {
     );
   }
 
-  // ── RULE 2: OVERWORK WARNING ─────────────────────────────
+  // ── RULE 2: OVERWORK DETECTION ────────────────────────────
+
+  /// Detects if any muscle group has been trained 3+ times
+  /// in the last 2 days, which can lead to overtraining and injury.
+  /// Returns a warning for each overworked muscle group found.
   Future<List<AIRecommendation>> _getOverworkWarnings() async {
     final logs = await _logCrud.getLogsWithExerciseNames();
     final now = DateTime.now();
     final List<AIRecommendation> warnings = [];
 
+    // Count how many times each muscle was trained in last 2 days
     final Map<String, int> recentCount = {};
     for (final log in logs) {
       final muscle = log['muscle_group'] as String? ?? '';
@@ -175,6 +204,7 @@ class AITrainerService {
       }
     }
 
+    // Flag any muscle trained 3 or more times in 2 days
     for (final entry in recentCount.entries) {
       if (entry.value >= 3) {
         warnings.add(AIRecommendation(
@@ -191,7 +221,11 @@ class AITrainerService {
     return warnings;
   }
 
-  // ── RULE 3: REST DAY RECOMMENDATION ─────────────────────
+  // ── RULE 3: REST DAY RECOMMENDATION ──────────────────────
+
+  /// Recommends rest or active recovery based on current streak length.
+  /// 6+ days → full rest recommended
+  /// 4–5 days → light/active recovery suggested
   Future<AIRecommendation?> _getRestDayRecommendation() async {
     final streak = await _streakService.getCurrentStreak();
 
@@ -220,16 +254,21 @@ class AITrainerService {
     return null;
   }
 
-  // ── RULE 4: WEEKLY GOAL NUDGE ────────────────────────────
+  // ── RULE 4: WEEKLY GOAL NUDGE ─────────────────────────────
+
+  /// Compares current weekly workout count against the active quest goal.
+  /// Warns if user is behind pace, celebrates if goal is already met.
   Future<AIRecommendation?> _getWeeklyGoalNudge() async {
     final quests = await _questCrud.getActiveQuests();
     if (quests.isEmpty) return null;
 
+    // Use the most recently created active quest
     final quest = quests.first;
     final weeklyGoal = quest['weekly_goal'] as int;
     final weeklyCount = await _logCrud.getWeeklyWorkoutCount();
     final remaining = weeklyGoal - weeklyCount;
 
+    // Goal already met this week
     if (remaining <= 0) {
       return AIRecommendation(
         type: RecommendationType.tip,
@@ -241,10 +280,11 @@ class AITrainerService {
       );
     }
 
-    // Check how many days left in the week
+    // Check if there are enough days left to reach the goal
     final daysLeftInWeek = 7 - DateTime.now().weekday;
 
     if (remaining > daysLeftInWeek) {
+      // Behind pace — urgent warning
       return AIRecommendation(
         type: RecommendationType.warning,
         title: 'Behind on Weekly Goal',
@@ -255,6 +295,7 @@ class AITrainerService {
       );
     }
 
+    // On track — informational nudge
     return AIRecommendation(
       type: RecommendationType.tip,
       title: '$remaining Workouts Left This Week',
@@ -265,13 +306,18 @@ class AITrainerService {
     );
   }
 
-  // ── GET DAILY QUOTE ──────────────────────────────────────
+  // ── QUOTE HELPERS ─────────────────────────────────────────
+
+  /// Returns a quote based on the day of year so it changes daily
   Map<String, String> getDailyQuote() {
-    final dayOfYear = DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
-    return motivationalQuotes[dayOfYear % motivationalQuotes.length];
+    final dayOfYear = DateTime.now()
+        .difference(DateTime(DateTime.now().year))
+        .inDays;
+    return motivationalQuotes[
+        dayOfYear % motivationalQuotes.length];
   }
 
-  // ── GET RANDOM QUOTE ─────────────────────────────────────
+  /// Returns a pseudo-random quote based on current milliseconds
   Map<String, String> getRandomQuote() {
     final index = DateTime.now().millisecondsSinceEpoch %
         motivationalQuotes.length;
@@ -279,14 +325,24 @@ class AITrainerService {
   }
 }
 
-// ── DATA MODELS ──────────────────────────────────────────────
-enum RecommendationType { suggestion, warning, rest, tip }
+// ── DATA MODELS ───────────────────────────────────────────────
 
+/// The 4 types of recommendations the AI Trainer can generate
+enum RecommendationType {
+  suggestion, // Positive action to take
+  warning,    // Something to avoid
+  rest,       // Recovery recommendation
+  tip,        // General motivational info
+}
+
+/// A single AI recommendation with display properties
 class AIRecommendation {
   final RecommendationType type;
   final String title;
   final String message;
   final String icon;
+
+  /// Higher priority recommendations appear first in the list
   final int priority;
 
   AIRecommendation({
@@ -297,16 +353,18 @@ class AIRecommendation {
     required this.priority,
   });
 
+  /// Returns the color associated with this recommendation type
+  /// Used for card border and icon background tinting
   Color get color {
     switch (type) {
       case RecommendationType.warning:
-        return Color(0xFFF44336);
+        return const Color(0xFFF44336); // Red
       case RecommendationType.rest:
-        return Color(0xFF2196F3);
+        return const Color(0xFF2196F3); // Blue
       case RecommendationType.suggestion:
-        return Color(0xFFFF6000);
+        return const Color(0xFFFF6000); // Orange
       case RecommendationType.tip:
-        return Color(0xFF4CAF50);
+        return const Color(0xFF4CAF50); // Green
     }
   }
 }

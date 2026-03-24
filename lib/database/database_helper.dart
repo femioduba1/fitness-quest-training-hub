@@ -2,18 +2,22 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'schema.dart';
 
+/// Singleton database helper that manages SQLite initialization
+/// and provides a shared database instance across all CRUD classes
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
   static Database? _database;
 
   DatabaseHelper._internal();
 
+  /// Returns existing database or initializes a new one
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
 
+  /// Opens the SQLite database file, creating it if it doesn't exist
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'fitness_quest.db');
@@ -25,16 +29,17 @@ class DatabaseHelper {
     );
   }
 
+  /// Creates all 5 tables and seeds the exercise library on first launch
   Future<void> _onCreate(Database db, int version) async {
     await db.execute(DBSchema.createQuestsTable);
     await db.execute(DBSchema.createExercisesTable);
     await db.execute(DBSchema.createWorkoutLogsTable);
     await db.execute(DBSchema.createPersonalRecordsTable);
     await db.execute(DBSchema.createProgressPhotosTable);
-    await _seedExercises(db); // Pre-load exercise library
+    await _seedExercises(db);
   }
 
-  // Seed some starter exercises into the library
+  /// Pre-loads 8 starter exercises covering all major muscle groups
   Future<void> _seedExercises(Database db) async {
     final exercises = [
       {'name': 'Push-Up', 'muscle_group': 'Chest', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Classic bodyweight chest exercise'},

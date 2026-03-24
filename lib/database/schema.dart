@@ -1,12 +1,14 @@
+/// Defines all SQLite table names and CREATE TABLE statements
+/// for the Fitness Quest database
 class DBSchema {
-  // Table names
+  // ── TABLE NAMES ─────────────────────────────────────────
   static const String tableQuests = 'quests';
   static const String tableExercises = 'exercises';
   static const String tableWorkoutLogs = 'workout_logs';
   static const String tablePersonalRecords = 'personal_records';
   static const String tableProgressPhotos = 'progress_photos';
 
-  // QUESTS table
+  /// Stores user-created workout challenges with duration and weekly goals
   static const String createQuestsTable = '''
     CREATE TABLE $tableQuests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +22,7 @@ class DBSchema {
     )
   ''';
 
-  // EXERCISES table
+  /// Stores the built-in exercise library with muscle group and difficulty info
   static const String createExercisesTable = '''
     CREATE TABLE $tableExercises (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +34,7 @@ class DBSchema {
     )
   ''';
 
-  // WORKOUT LOGS table
+  /// Logs each completed workout session with sets, reps, and optional weight
   static const String createWorkoutLogsTable = '''
     CREATE TABLE $tableWorkoutLogs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +50,7 @@ class DBSchema {
     )
   ''';
 
-  // PERSONAL RECORDS table
+  /// Tracks personal bests per exercise (e.g. max weight lifted)
   static const String createPersonalRecordsTable = '''
     CREATE TABLE $tablePersonalRecords (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +62,7 @@ class DBSchema {
     )
   ''';
 
-  // PROGRESS PHOTOS table
+  /// Stores file paths and captions for user progress photos
   static const String createProgressPhotosTable = '''
     CREATE TABLE $tableProgressPhotos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

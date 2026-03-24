@@ -1,29 +1,34 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Handles persistent user settings using SharedPreferences
+/// Used for lightweight key-value storage (theme, name, preferences)
 class PreferencesService {
-  static final PreferencesService instance = PreferencesService._internal();
+  static final PreferencesService instance =
+      PreferencesService._internal();
   PreferencesService._internal();
 
-  // Keys
+  // SharedPreferences keys
   static const String _keyUserName = 'user_name';
   static const String _keyThemeMode = 'theme_mode';
-  static const String _keyNotificationsEnabled = 'notifications_enabled';
+  static const String _keyNotificationsEnabled =
+      'notifications_enabled';
   static const String _keyWeightUnit = 'weight_unit';
   static const String _keyHasOnboarded = 'has_onboarded';
 
-  // ─── USERNAME ───────────────────────────────────────────
+  // ── USERNAME ─────────────────────────────────────────────
   Future<void> setUserName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserName, name);
   }
 
+  /// Returns saved username or 'Athlete' as default
   Future<String> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyUserName) ?? 'Athlete';
   }
 
-  // ─── THEME ──────────────────────────────────────────────
-  // 'system', 'light', 'dark'
+  // ── THEME ─────────────────────────────────────────────────
+  /// Saves theme mode: 'system', 'light', or 'dark'
   Future<void> setThemeMode(String mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyThemeMode, mode);
@@ -31,10 +36,10 @@ class PreferencesService {
 
   Future<String> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyThemeMode) ?? 'system';
+    return prefs.getString(_keyThemeMode) ?? 'dark';
   }
 
-  // ─── NOTIFICATIONS ──────────────────────────────────────
+  // ── NOTIFICATIONS ─────────────────────────────────────────
   Future<void> setNotificationsEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotificationsEnabled, enabled);
@@ -45,8 +50,8 @@ class PreferencesService {
     return prefs.getBool(_keyNotificationsEnabled) ?? true;
   }
 
-  // ─── WEIGHT UNIT ────────────────────────────────────────
-  // 'kg' or 'lbs'
+  // ── WEIGHT UNIT ───────────────────────────────────────────
+  /// Saves weight unit preference: 'kg' or 'lbs'
   Future<void> setWeightUnit(String unit) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyWeightUnit, unit);
@@ -57,7 +62,7 @@ class PreferencesService {
     return prefs.getString(_keyWeightUnit) ?? 'lbs';
   }
 
-  // ─── ONBOARDING ─────────────────────────────────────────
+  // ── ONBOARDING ────────────────────────────────────────────
   Future<void> setHasOnboarded(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyHasOnboarded, value);
@@ -68,7 +73,7 @@ class PreferencesService {
     return prefs.getBool(_keyHasOnboarded) ?? false;
   }
 
-  // ─── CLEAR ALL ──────────────────────────────────────────
+  /// Clears all saved preferences — used by reset in Settings
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
