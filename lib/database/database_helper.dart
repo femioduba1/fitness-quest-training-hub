@@ -2,7 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'schema.dart';
 
-/// Singleton database helper that manages SQLite initialization,
+/// Singleton database helper — manages SQLite initialization,
 /// versioning, and provides a shared database instance
 class DatabaseHelper {
   static final DatabaseHelper instance =
@@ -23,37 +23,44 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2, // Bumped to 2 for new exercises
+      version: 3, // Bumped to 3 for body measurements
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
-  /// Creates all tables and seeds exercises on first launch
-  Future<void> _onCreate(Database db, int version) async {
+  /// Creates all tables on first launch
+  Future<void> _onCreate(
+      Database db, int version) async {
     await db.execute(DBSchema.createQuestsTable);
     await db.execute(DBSchema.createExercisesTable);
     await db.execute(DBSchema.createWorkoutLogsTable);
-    await db.execute(DBSchema.createPersonalRecordsTable);
+    await db.execute(
+        DBSchema.createPersonalRecordsTable);
     await db.execute(DBSchema.createProgressPhotosTable);
+    await db
+        .execute(DBSchema.createBodyMeasurementsTable);
     await _seedExercises(db);
   }
 
-  /// Handles database upgrades between versions
+  /// Handles upgrades between database versions
   Future<void> _onUpgrade(
       Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Clear old exercises and re-seed with full list
       await db.delete(DBSchema.tableExercises);
       await _seedExercises(db);
+    }
+    if (oldVersion < 3) {
+      // Add body measurements table for existing users
+      await db
+          .execute(DBSchema.createBodyMeasurementsTable);
     }
   }
 
   /// Seeds 60+ exercises across 6 muscle groups
   Future<void> _seedExercises(Database db) async {
     final exercises = [
-
-      // ── CHEST (10 exercises) ──────────────────────────
+      // ── CHEST ──────────────────────────────────────
       {'name': 'Bench Press', 'muscle_group': 'Chest', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'Classic barbell chest press on a flat bench'},
       {'name': 'Push-Up', 'muscle_group': 'Chest', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Classic bodyweight chest exercise'},
       {'name': 'Incline Bench Press', 'muscle_group': 'Chest', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'Upper chest focused press on incline bench'},
@@ -64,8 +71,7 @@ class DatabaseHelper {
       {'name': 'Incline Dumbbell Press', 'muscle_group': 'Chest', 'equipment': 'Dumbbells', 'difficulty': 'Intermediate', 'description': 'Upper chest press with dumbbells on incline'},
       {'name': 'Pec Deck Machine', 'muscle_group': 'Chest', 'equipment': 'Machine', 'difficulty': 'Beginner', 'description': 'Machine chest fly for isolation'},
       {'name': 'Wide Push-Up', 'muscle_group': 'Chest', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Wide grip push-up targeting outer chest'},
-
-      // ── BACK (10 exercises) ───────────────────────────
+      // ── BACK ───────────────────────────────────────
       {'name': 'Pull-Up', 'muscle_group': 'Back', 'equipment': 'Pull-up Bar', 'difficulty': 'Intermediate', 'description': 'Upper body pulling exercise for back width'},
       {'name': 'Deadlift', 'muscle_group': 'Back', 'equipment': 'Barbell', 'difficulty': 'Advanced', 'description': 'Full body compound lift targeting lower back'},
       {'name': 'Bent Over Row', 'muscle_group': 'Back', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'Barbell row for overall back thickness'},
@@ -76,8 +82,7 @@ class DatabaseHelper {
       {'name': 'Face Pull', 'muscle_group': 'Back', 'equipment': 'Cable Machine', 'difficulty': 'Beginner', 'description': 'Rear delt and upper back exercise'},
       {'name': 'Hyperextension', 'muscle_group': 'Back', 'equipment': 'Machine', 'difficulty': 'Beginner', 'description': 'Lower back strengthening exercise'},
       {'name': 'Chin-Up', 'muscle_group': 'Back', 'equipment': 'Pull-up Bar', 'difficulty': 'Intermediate', 'description': 'Underhand grip pull-up for back and biceps'},
-
-      // ── LEGS (10 exercises) ───────────────────────────
+      // ── LEGS ───────────────────────────────────────
       {'name': 'Squat', 'muscle_group': 'Legs', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'King of leg exercises — quad dominant'},
       {'name': 'Lunges', 'muscle_group': 'Legs', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Unilateral leg exercise for balance and strength'},
       {'name': 'Leg Press', 'muscle_group': 'Legs', 'equipment': 'Machine', 'difficulty': 'Beginner', 'description': 'Machine compound leg press'},
@@ -88,8 +93,7 @@ class DatabaseHelper {
       {'name': 'Bulgarian Split Squat', 'muscle_group': 'Legs', 'equipment': 'Dumbbells', 'difficulty': 'Advanced', 'description': 'Rear foot elevated split squat'},
       {'name': 'Hack Squat', 'muscle_group': 'Legs', 'equipment': 'Machine', 'difficulty': 'Intermediate', 'description': 'Machine squat for quad development'},
       {'name': 'Sumo Deadlift', 'muscle_group': 'Legs', 'equipment': 'Barbell', 'difficulty': 'Advanced', 'description': 'Wide stance deadlift targeting inner thighs'},
-
-      // ── CORE (10 exercises) ───────────────────────────
+      // ── CORE ───────────────────────────────────────
       {'name': 'Plank', 'muscle_group': 'Core', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Isometric core stabilization hold'},
       {'name': 'Crunches', 'muscle_group': 'Core', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Basic abdominal crunch exercise'},
       {'name': 'Russian Twist', 'muscle_group': 'Core', 'equipment': 'None', 'difficulty': 'Beginner', 'description': 'Rotational core exercise for obliques'},
@@ -100,8 +104,7 @@ class DatabaseHelper {
       {'name': 'Side Plank', 'muscle_group': 'Core', 'equipment': 'None', 'difficulty': 'Intermediate', 'description': 'Lateral core stabilization hold'},
       {'name': 'Dead Bug', 'muscle_group': 'Core', 'equipment': 'None', 'difficulty': 'Intermediate', 'description': 'Anti-extension core stability exercise'},
       {'name': 'Hanging Knee Raise', 'muscle_group': 'Core', 'equipment': 'Pull-up Bar', 'difficulty': 'Intermediate', 'description': 'Hanging lower ab exercise'},
-
-      // ── ARMS (10 exercises) ───────────────────────────
+      // ── ARMS ───────────────────────────────────────
       {'name': 'Bicep Curl', 'muscle_group': 'Arms', 'equipment': 'Dumbbells', 'difficulty': 'Beginner', 'description': 'Classic dumbbell bicep curl'},
       {'name': 'Hammer Curl', 'muscle_group': 'Arms', 'equipment': 'Dumbbells', 'difficulty': 'Beginner', 'description': 'Neutral grip curl for brachialis'},
       {'name': 'Preacher Curl', 'muscle_group': 'Arms', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'Supported curl for peak bicep'},
@@ -112,8 +115,7 @@ class DatabaseHelper {
       {'name': 'Diamond Push-Up', 'muscle_group': 'Arms', 'equipment': 'None', 'difficulty': 'Intermediate', 'description': 'Close grip push-up for triceps'},
       {'name': 'Cable Curl', 'muscle_group': 'Arms', 'equipment': 'Cable Machine', 'difficulty': 'Beginner', 'description': 'Cable bicep curl for constant tension'},
       {'name': 'Close Grip Bench Press', 'muscle_group': 'Arms', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'Narrow grip bench for tricep mass'},
-
-      // ── SHOULDERS (10 exercises) ──────────────────────
+      // ── SHOULDERS ──────────────────────────────────
       {'name': 'Overhead Press', 'muscle_group': 'Shoulders', 'equipment': 'Barbell', 'difficulty': 'Intermediate', 'description': 'Standing barbell shoulder press'},
       {'name': 'Lateral Raise', 'muscle_group': 'Shoulders', 'equipment': 'Dumbbells', 'difficulty': 'Beginner', 'description': 'Side delt isolation with dumbbells'},
       {'name': 'Front Raise', 'muscle_group': 'Shoulders', 'equipment': 'Dumbbells', 'difficulty': 'Beginner', 'description': 'Front delt raise with dumbbells'},

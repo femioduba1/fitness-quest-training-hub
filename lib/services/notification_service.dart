@@ -171,4 +171,53 @@ class NotificationService {
     }
     return scheduled;
   }
+
+  /// Schedules a weekly Sunday notification to remind user to log weight
+Future<void> scheduleSundayWeightReminder() async {
+  if (!_initialized) await initialize();
+  await _createNotificationChannel();
+
+  try {
+    final now = tz.TZDateTime.now(tz.local);
+
+    // Find next Sunday at 9am
+    var nextSunday = tz.TZDateTime(
+        tz.local, now.year, now.month, now.day, 9);
+
+    // days until Sunday (weekday: 1=Mon, 7=Sun)
+    final daysUntilSunday = (7 - now.weekday) % 7;
+    nextSunday = nextSunday
+        .add(Duration(days: daysUntilSunday == 0 ? 7 : daysUntilSunday));
+
+    await _plugin.zonedSchedule(
+      99, // unique ID for weight reminder
+      '⚖️ Weekly Weigh-In Reminder',
+      'Time to log your weight and track your BMI progress!',
+      nextSunday,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'weight_reminder_channel',
+          'Weight Reminders',
+          channelDescription: 'Weekly Sunday weight logging reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode:
+          AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+
+    debugPrint('✅ Sunday weight reminder scheduled');
+  } catch (e) {
+    debugPrint('❌ Weight reminder scheduling failed: $e');
+  }
+}
 }

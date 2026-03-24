@@ -1,32 +1,38 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Handles persistent user settings using SharedPreferences
-/// Used for lightweight key-value storage (theme, name, preferences)
 class PreferencesService {
-  static final PreferencesService instance = PreferencesService._internal();
+  static final PreferencesService instance =
+      PreferencesService._internal();
   PreferencesService._internal();
 
-  // SharedPreferences keys
   static const String _keyUserName = 'user_name';
   static const String _keyThemeMode = 'theme_mode';
-  static const String _keyNotificationsEnabled = 'notifications_enabled';
+  static const String _keyNotificationsEnabled =
+      'notifications_enabled';
   static const String _keyWeightUnit = 'weight_unit';
   static const String _keyHasOnboarded = 'has_onboarded';
+  static const String _keyFitnessGoal = 'fitness_goal';
+  static const String _keyExperienceLevel =
+      'experience_level';
+  static const String _keyWorkoutFrequency =
+      'workout_frequency';
+  static const String _keyHeightCm = 'height_cm';
+  static const String _keyInitialWeightKg =
+      'initial_weight_kg';
 
-  // ── USERNAME ─────────────────────────────────────────────
+  // ── USERNAME ─────────────────────────────────────────
   Future<void> setUserName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserName, name);
   }
 
-  /// Returns saved username or 'Athlete' as default
   Future<String> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyUserName) ?? 'Athlete';
   }
 
-  // ── THEME ─────────────────────────────────────────────────
-  /// Saves theme mode: 'system', 'light', or 'dark'
+  // ── THEME ─────────────────────────────────────────────
   Future<void> setThemeMode(String mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyThemeMode, mode);
@@ -37,8 +43,9 @@ class PreferencesService {
     return prefs.getString(_keyThemeMode) ?? 'dark';
   }
 
-  // ── NOTIFICATIONS ─────────────────────────────────────────
-  Future<void> setNotificationsEnabled(bool enabled) async {
+  // ── NOTIFICATIONS ─────────────────────────────────────
+  Future<void> setNotificationsEnabled(
+      bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotificationsEnabled, enabled);
   }
@@ -48,8 +55,7 @@ class PreferencesService {
     return prefs.getBool(_keyNotificationsEnabled) ?? true;
   }
 
-  // ── WEIGHT UNIT ───────────────────────────────────────────
-  /// Saves weight unit preference: 'kg' or 'lbs'
+  // ── WEIGHT UNIT ───────────────────────────────────────
   Future<void> setWeightUnit(String unit) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyWeightUnit, unit);
@@ -60,7 +66,7 @@ class PreferencesService {
     return prefs.getString(_keyWeightUnit) ?? 'lbs';
   }
 
-  // ── ONBOARDING ────────────────────────────────────────────
+  // ── ONBOARDING ────────────────────────────────────────
   Future<void> setHasOnboarded(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyHasOnboarded, value);
@@ -71,42 +77,64 @@ class PreferencesService {
     return prefs.getBool(_keyHasOnboarded) ?? false;
   }
 
-  /// Clears all saved preferences — used by reset in Settings
-  Future<void> clearAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-  }
-
   // ── FITNESS GOAL ──────────────────────────────────────
   Future<void> setFitnessGoal(String goal) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('fitness_goal', goal);
+    await prefs.setString(_keyFitnessGoal, goal);
   }
 
   Future<String> getFitnessGoal() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('fitness_goal') ?? '';
+    return prefs.getString(_keyFitnessGoal) ?? '';
   }
 
   // ── EXPERIENCE LEVEL ──────────────────────────────────
   Future<void> setExperienceLevel(String level) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('experience_level', level);
+    await prefs.setString(_keyExperienceLevel, level);
   }
 
   Future<String> getExperienceLevel() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('experience_level') ?? '';
+    return prefs.getString(_keyExperienceLevel) ?? '';
   }
 
   // ── WORKOUT FREQUENCY ─────────────────────────────────
   Future<void> setWorkoutFrequency(int days) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('workout_frequency', days);
+    await prefs.setInt(_keyWorkoutFrequency, days);
   }
 
   Future<int> getWorkoutFrequency() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('workout_frequency') ?? 3;
+    return prefs.getInt(_keyWorkoutFrequency) ?? 3;
+  }
+
+  // ── HEIGHT ────────────────────────────────────────────
+  Future<void> setHeightCm(double height) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyHeightCm, height);
+  }
+
+  Future<double> getHeightCm() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_keyHeightCm) ?? 0.0;
+  }
+
+  // ── INITIAL WEIGHT ────────────────────────────────────
+  Future<void> setInitialWeightKg(double weight) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyInitialWeightKg, weight);
+  }
+
+  Future<double> getInitialWeightKg() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_keyInitialWeightKg) ?? 0.0;
+  }
+
+  /// Clears all saved preferences
+  Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 }

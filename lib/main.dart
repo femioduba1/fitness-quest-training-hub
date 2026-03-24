@@ -24,8 +24,14 @@ void main() async {
       .scheduleMotivationalNotifications()
       .catchError((e) => debugPrint('Schedule error: $e'));
 
+  NotificationService.instance
+      .scheduleSundayWeightReminder()
+      .catchError((e) => debugPrint('Weight reminder error: $e'));
+
   runApp(FitnessQuestApp(key: FitnessQuestApp.appKey));
 }
+
+
 
 /// Root app widget — manages global theme state
 class FitnessQuestApp extends StatefulWidget {
