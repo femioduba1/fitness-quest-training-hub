@@ -5,7 +5,10 @@ import '../services/streak_service.dart';
 import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
+import 'edit_quest_screen.dart';
 
+/// Home Dashboard — displays active quests, streak, weekly stats
+/// and quick access to all app features via the burger menu
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -31,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadDashboard();
   }
 
+  /// Loads all dashboard data in parallel for performance
   Future<void> _loadDashboard() async {
     if (!mounted) return;
     try {
@@ -54,12 +58,42 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Calculates quest completion percentage based on
+  /// weekly workouts vs total target (duration × weekly goal)
   double _calculateProgress(Map<String, dynamic> quest) {
     final durationWeeks = quest['duration_weeks'] as int;
     final weeklyGoal = quest['weekly_goal'] as int;
     final totalGoal = durationWeeks * weeklyGoal;
     if (totalGoal == 0) return 0.0;
     return (_weeklyWorkouts / totalGoal).clamp(0.0, 1.0);
+  }
+
+  /// Shows confirmation dialog before deleting a quest
+  Future<bool> _confirmDelete(
+    BuildContext context,
+    Map<String, dynamic> quest,
+  ) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Quest'),
+            content: Text('Delete "${quest['name']}"? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
@@ -69,28 +103,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.orange))
+              child: CircularProgressIndicator(color: AppTheme.orange),
+            )
           : RefreshIndicator(
               color: AppTheme.orange,
-              backgroundColor:
-                  isDark ? AppTheme.darkCard : AppTheme.lightCard,
+              backgroundColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
               displacement: 80,
               strokeWidth: 3,
               onRefresh: _loadDashboard,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-
-                  // ── SLIVER APP BAR ───────────────────
+                  // ── SLIVER APP BAR ─────────────────
                   SliverAppBar(
                     expandedHeight: 200,
                     pinned: true,
                     backgroundColor: AppTheme.darkBackground,
                     leading: IconButton(
-                      icon: const Icon(Icons.menu_rounded,
-                          color: Colors.white),
-                      onPressed: () =>
-                          menuKey.currentState?.toggleMenu(),
+                      icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                      onPressed: () => menuKey.currentState?.toggleMenu(),
                     ),
                     actions: const [],
                     flexibleSpace: FlexibleSpaceBar(
@@ -99,26 +130,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              AppTheme.orange,
-                              AppTheme.orangeDark,
-                            ],
+                            colors: [AppTheme.orange, AppTheme.orangeDark],
                           ),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                              20, 60, 20, 20),
+                          padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            mainAxisAlignment:
-                                MainAxisAlignment.end,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
                                 'WELCOME BACK',
                                 style: TextStyle(
-                                  color: Colors.white
-                                      .withOpacity(0.7),
+                                  color: Colors.white.withOpacity(0.7),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 2,
@@ -139,16 +163,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   Icon(
                                     Icons.swipe_down,
-                                    color: Colors.white
-                                        .withOpacity(0.5),
+                                    color: Colors.white.withOpacity(0.5),
                                     size: 14,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Pull down to refresh',
                                     style: TextStyle(
-                                      color: Colors.white
-                                          .withOpacity(0.5),
+                                      color: Colors.white.withOpacity(0.5),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -165,37 +187,45 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.all(16),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-
-                        // ── STATS ROW ────────────────────
+                        // ── STATS ROW ──────────────────
                         Row(
                           children: [
                             Expanded(
-                              child: _StatCard(
-                                title: 'STREAK',
-                                value: '$_currentStreak',
-                                unit: 'days',
-                                icon: Icons.local_fire_department,
-                                color: AppTheme.orange,
+                              child: Semantics(
+                                label: 'Current streak $_currentStreak days',
+                                child: _StatCard(
+                                  title: 'STREAK',
+                                  value: '$_currentStreak',
+                                  unit: 'days',
+                                  icon: Icons.local_fire_department,
+                                  color: AppTheme.orange,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _StatCard(
-                                title: 'THIS WEEK',
-                                value: '$_weeklyWorkouts',
-                                unit: 'workouts',
-                                icon: Icons.bolt,
-                                color: const Color(0xFF4CAF50),
+                              child: Semantics(
+                                label: 'This week $_weeklyWorkouts workouts',
+                                child: _StatCard(
+                                  title: 'THIS WEEK',
+                                  value: '$_weeklyWorkouts',
+                                  unit: 'workouts',
+                                  icon: Icons.bolt,
+                                  color: const Color(0xFF4CAF50),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _StatCard(
-                                title: 'QUESTS',
-                                value: '${_activeQuests.length}',
-                                unit: 'active',
-                                icon: Icons.flag,
-                                color: const Color(0xFF2196F3),
+                              child: Semantics(
+                                label: '${_activeQuests.length} active quests',
+                                child: _StatCard(
+                                  title: 'QUESTS',
+                                  value: '${_activeQuests.length}',
+                                  unit: 'active',
+                                  icon: Icons.flag,
+                                  color: const Color(0xFF2196F3),
+                                ),
                               ),
                             ),
                           ],
@@ -203,21 +233,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         const SizedBox(height: 28),
 
-                        // ── ACTIVE QUESTS ────────────────
-                        Text(
-                          'ACTIVE QUESTS',
-                          style: TextStyle(
-                            color: isDark
-                                ? AppTheme.darkTextSecondary
-                                : AppTheme.lightTextSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2,
-                          ),
+                        // ── ACTIVE QUESTS LABEL ────────
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'ACTIVE QUESTS',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppTheme.darkTextSecondary
+                                    : AppTheme.lightTextSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            Text(
+                              'Tap to edit • Swipe to delete',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppTheme.darkTextSecondary
+                                    : AppTheme.lightTextSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: 12),
 
+                        // ── QUESTS LIST ────────────────
                         if (_activeQuests.isEmpty)
                           Container(
                             padding: const EdgeInsets.all(32),
@@ -225,8 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: isDark
                                   ? AppTheme.darkCard
                                   : AppTheme.lightCard,
-                              borderRadius:
-                                  BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Column(
                               children: [
@@ -263,19 +307,81 @@ class _HomeScreenState extends State<HomeScreen> {
                           )
                         else
                           ..._activeQuests.map((quest) {
-                            final progress =
-                                _calculateProgress(quest);
-                            final progressPercent =
-                                (progress * 100).toInt();
+                            final progress = _calculateProgress(quest);
+                            final progressPercent = (progress * 100).toInt();
                             return Padding(
-                              padding: const EdgeInsets.only(
-                                  bottom: 12),
-                              child: _QuestCard(
-                                title: quest['name'],
-                                subtitle:
-                                    '${quest['duration_weeks']} weeks • ${quest['weekly_goal']}x/week',
-                                progress: progress,
-                                progressText: '$progressPercent%',
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Dismissible(
+                                key: Key(quest['id'].toString()),
+                                direction: DismissDirection.endToStart,
+                                confirmDismiss: (direction) async {
+                                  return await _confirmDelete(context, quest);
+                                },
+                                onDismissed: (direction) async {
+                                  await _questCrud.deleteQuest(quest['id']);
+                                  _loadDashboard();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '"${quest['name']}" deleted',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                // Red delete background
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.delete_rounded,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'DELETE',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Tap to edit
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final updated = await Navigator.push<bool>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            EditQuestScreen(quest: quest),
+                                      ),
+                                    );
+                                    // Reload if quest was updated
+                                    if (updated == true) {
+                                      _loadDashboard();
+                                    }
+                                  },
+                                  child: _QuestCard(
+                                    title: quest['name'],
+                                    subtitle:
+                                        '${quest['duration_weeks']} weeks • ${quest['weekly_goal']}x/week',
+                                    progress: progress,
+                                    progressText: '$progressPercent%',
+                                  ),
+                                ),
                               ),
                             );
                           }),
@@ -291,6 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+/// Reusable stat card for displaying key metrics
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -356,6 +463,8 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+/// Quest card showing title, subtitle, progress bar
+/// and edit icon badge — tap to edit, swipe left to delete
 class _QuestCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -402,7 +511,9 @@ class _QuestCard extends StatelessWidget {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.orange.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -437,8 +548,7 @@ class _QuestCard extends StatelessWidget {
               backgroundColor: isDark
                   ? AppTheme.darkCardLight
                   : AppTheme.lightCardLight,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                  AppTheme.orange),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.orange),
             ),
           ),
         ],

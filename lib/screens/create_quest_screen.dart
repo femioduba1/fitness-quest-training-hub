@@ -4,6 +4,8 @@ import '../database/crud/exercise_crud.dart';
 import '../theme/app_theme.dart';
 import '../main.dart';
 
+/// Create Quest Screen — allows users to create a custom quest
+/// or choose from pre-built workout split templates
 class CreateQuestScreen extends StatefulWidget {
   const CreateQuestScreen({super.key});
 
@@ -23,16 +25,78 @@ class _CreateQuestScreenState
   final QuestCrud _questCrud = QuestCrud();
   final ExerciseCrud _exerciseCrud = ExerciseCrud();
 
-  String selectedDuration = '1 Week';
-  int selectedWeeklyGoal = 3;
+  String selectedDuration = '1 Month';
+  int selectedWeeklyGoal = 5;
   bool _isSaving = false;
+  String? _selectedTemplate;
 
   // All exercises from database
   List<Map<String, dynamic>> _allExercises = [];
 
   // Selected exercises with sets/reps
-  // { exercise: {...}, sets: 3, reps: 10 }
   List<Map<String, dynamic>> _selectedExercises = [];
+
+  // ── WORKOUT SPLIT TEMPLATES ───────────────────────────
+  static const List<Map<String, dynamic>> _templates = [
+    {
+      'id': 'custom',
+      'name': 'Custom Split',
+      'description': 'Build your own workout from scratch',
+      'icon': '✏️',
+      'color': 0xFF9E9E9E,
+      'weeklyGoal': 3,
+      'duration': '1 Month',
+      'exercises': <String>[],
+    },
+    {
+      'id': 'bro_split',
+      'name': 'Bro Split',
+      'description':
+          'One muscle group per day — 5 exercises each. Chest · Back · Legs · Shoulders · Arms',
+      'icon': '💪',
+      'color': 0xFFFF6000,
+      'weeklyGoal': 5,
+      'duration': '1 Month',
+      'exercises': [
+        // Chest Day
+        'Bench Press',
+        'Push-Up',
+        // Back Day
+        'Pull-Up',
+        'Deadlift',
+        // Legs Day
+        'Squat',
+        'Lunges',
+        // Arms Day
+        'Bicep Curl',
+        // Core Day
+        'Plank',
+      ],
+    },
+    {
+      'id': 'ppl',
+      'name': 'Push Pull Legs',
+      'description':
+          'Push (Chest/Shoulders/Triceps) · Pull (Back/Biceps) · Legs. 6 days per week.',
+      'icon': '🔥',
+      'color': 0xFF2196F3,
+      'weeklyGoal': 6,
+      'duration': '1 Month',
+      'exercises': [
+        // Push
+        'Bench Press',
+        'Push-Up',
+        // Pull
+        'Pull-Up',
+        'Bicep Curl',
+        'Deadlift',
+        // Legs
+        'Squat',
+        'Lunges',
+        'Plank',
+      ],
+    },
+  ];
 
   @override
   void initState() {
@@ -54,10 +118,14 @@ class _CreateQuestScreenState
 
   int _durationToWeeks(String duration) {
     switch (duration) {
-      case '1 Week': return 1;
-      case '2 Weeks': return 2;
-      case '1 Month': return 4;
-      default: return 1;
+      case '1 Week':
+        return 1;
+      case '2 Weeks':
+        return 2;
+      case '1 Month':
+        return 4;
+      default:
+        return 1;
     }
   }
 
@@ -65,13 +133,56 @@ class _CreateQuestScreenState
     setState(() {
       _questNameController.clear();
       _descriptionController.clear();
-      selectedDuration = '1 Week';
-      selectedWeeklyGoal = 3;
+      selectedDuration = '1 Month';
+      selectedWeeklyGoal = 5;
       _selectedExercises = [];
+      _selectedTemplate = null;
     });
   }
 
-  // Opens exercise picker bottom sheet
+  /// Applies a template to the form — auto-fills all fields
+  void _applyTemplate(Map<String, dynamic> template) {
+    setState(() {
+      _selectedTemplate = template['id'];
+
+      if (template['id'] == 'custom') {
+        // Reset to blank for custom
+        _questNameController.clear();
+        _descriptionController.clear();
+        selectedDuration = '1 Week';
+        selectedWeeklyGoal = 3;
+        _selectedExercises = [];
+        return;
+      }
+
+      // Auto-fill quest details
+      _questNameController.text = template['name'];
+      _descriptionController.text = template['description'];
+      selectedDuration = template['duration'];
+      selectedWeeklyGoal = template['weeklyGoal'];
+
+      // Match exercise names to database exercises
+      final exerciseNames =
+          List<String>.from(template['exercises']);
+      _selectedExercises = [];
+
+      for (final name in exerciseNames) {
+        final match = _allExercises.firstWhere(
+          (e) => e['name'] == name,
+          orElse: () => {},
+        );
+        if (match.isNotEmpty) {
+          _selectedExercises.add({
+            'exercise': match,
+            'sets': 3,
+            'reps': 10,
+          });
+        }
+      }
+    });
+  }
+
+  /// Opens exercise picker bottom sheet
   Future<void> _openExercisePicker() async {
     final isDark =
         Theme.of(context).brightness == Brightness.dark;
@@ -88,7 +199,6 @@ class _CreateQuestScreenState
 
     String searchText = '';
     String filterDifficulty = 'All';
-    List<Map<String, dynamic>> filtered = _allExercises;
 
     await showModalBottomSheet(
       context: context,
@@ -101,8 +211,7 @@ class _CreateQuestScreenState
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            // Filter exercises
-            filtered = _allExercises.where((e) {
+            final filtered = _allExercises.where((e) {
               final matchesSearch = e['name']
                   .toString()
                   .toLowerCase()
@@ -123,13 +232,15 @@ class _CreateQuestScreenState
                   children: [
                     // Handle
                     Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding:
+                          const EdgeInsets.only(top: 12),
                       child: Container(
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
                           color: borderColor,
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius:
+                              BorderRadius.circular(2),
                         ),
                       ),
                     ),
@@ -161,16 +272,17 @@ class _CreateQuestScreenState
                       ),
                     ),
 
-                    // Search bar
+                    // Search
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16),
                       child: TextField(
-                        style: TextStyle(color: primaryText),
+                        style:
+                            TextStyle(color: primaryText),
                         decoration: InputDecoration(
                           hintText: 'Search exercises...',
-                          hintStyle:
-                              TextStyle(color: secondaryText),
+                          hintStyle: TextStyle(
+                              color: secondaryText),
                           prefixIcon: Icon(Icons.search,
                               color: secondaryText),
                         ),
@@ -182,7 +294,7 @@ class _CreateQuestScreenState
 
                     const SizedBox(height: 10),
 
-                    // Difficulty filter chips
+                    // Difficulty chips
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16),
@@ -198,25 +310,30 @@ class _CreateQuestScreenState
                             final isSelected =
                                 filterDifficulty == d;
                             return Padding(
-                              padding: const EdgeInsets.only(
-                                  right: 8),
+                              padding:
+                                  const EdgeInsets.only(
+                                      right: 8),
                               child: GestureDetector(
                                 onTap: () => setSheetState(
                                     () =>
-                                        filterDifficulty = d),
+                                        filterDifficulty =
+                                            d),
                                 child: Container(
-                                  padding:
-                                      const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 6),
+                                  padding: const EdgeInsets
+                                      .symmetric(
+                                      horizontal: 14,
+                                      vertical: 6),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppTheme.orange
                                         : isDark
-                                            ? AppTheme.darkCardLight
-                                            : AppTheme.lightCardLight,
+                                            ? AppTheme
+                                                .darkCardLight
+                                            : AppTheme
+                                                .lightCardLight,
                                     borderRadius:
-                                        BorderRadius.circular(20),
+                                        BorderRadius.circular(
+                                            20),
                                   ),
                                   child: Text(
                                     d.toUpperCase(),
@@ -225,7 +342,8 @@ class _CreateQuestScreenState
                                           ? Colors.white
                                           : secondaryText,
                                       fontSize: 11,
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight:
+                                          FontWeight.w700,
                                     ),
                                   ),
                                 ),
@@ -237,7 +355,6 @@ class _CreateQuestScreenState
                     ),
 
                     const SizedBox(height: 8),
-
                     Divider(color: borderColor, height: 1),
 
                     // Exercise list
@@ -259,10 +376,10 @@ class _CreateQuestScreenState
                                 setState(() {
                                   _selectedExercises
                                       .removeWhere((e) =>
-                                          e['exercise']['id'] ==
+                                          e['exercise']
+                                              ['id'] ==
                                           exercise['id']);
                                 });
-                                setSheetState(() {});
                               } else {
                                 setState(() {
                                   _selectedExercises.add({
@@ -271,32 +388,36 @@ class _CreateQuestScreenState
                                     'reps': 10,
                                   });
                                 });
-                                setSheetState(() {});
                               }
+                              setSheetState(() {});
                             },
                             child: Container(
                               margin: const EdgeInsets.only(
                                   bottom: 8),
-                              padding: const EdgeInsets.all(14),
+                              padding:
+                                  const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppTheme.orange
                                         .withOpacity(0.1)
                                     : isDark
-                                        ? AppTheme.darkCardLight
-                                        : AppTheme.lightCardLight,
+                                        ? AppTheme
+                                            .darkCardLight
+                                        : AppTheme
+                                            .lightCardLight,
                                 borderRadius:
-                                    BorderRadius.circular(14),
+                                    BorderRadius.circular(
+                                        14),
                                 border: Border.all(
                                   color: isSelected
                                       ? AppTheme.orange
                                       : borderColor,
-                                  width: isSelected ? 1.5 : 1,
+                                  width:
+                                      isSelected ? 1.5 : 1,
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  // Check or muscle icon
                                   Container(
                                     width: 36,
                                     height: 36,
@@ -304,15 +425,18 @@ class _CreateQuestScreenState
                                       color: isSelected
                                           ? AppTheme.orange
                                           : AppTheme.orange
-                                              .withOpacity(0.15),
+                                              .withOpacity(
+                                                  0.15),
                                       borderRadius:
-                                          BorderRadius.circular(
-                                              10),
+                                          BorderRadius
+                                              .circular(10),
                                     ),
                                     child: Icon(
                                       isSelected
-                                          ? Icons.check_rounded
-                                          : Icons.fitness_center,
+                                          ? Icons
+                                              .check_rounded
+                                          : Icons
+                                              .fitness_center,
                                       color: isSelected
                                           ? Colors.white
                                           : AppTheme.orange,
@@ -338,7 +462,8 @@ class _CreateQuestScreenState
                                         Text(
                                           '${exercise['muscle_group']} • ${exercise['difficulty']}',
                                           style: TextStyle(
-                                            color: secondaryText,
+                                            color:
+                                                secondaryText,
                                             fontSize: 11,
                                           ),
                                         ),
@@ -347,7 +472,8 @@ class _CreateQuestScreenState
                                   ),
                                   if (isSelected)
                                     const Icon(
-                                      Icons.check_circle_rounded,
+                                      Icons
+                                          .check_circle_rounded,
                                       color: AppTheme.orange,
                                       size: 20,
                                     ),
@@ -370,7 +496,7 @@ class _CreateQuestScreenState
                           child: Text(
                             _selectedExercises.isEmpty
                                 ? 'SKIP'
-                                : 'DONE — ${_selectedExercises.length} EXERCISE${_selectedExercises.length > 1 ? 'S' : ''} SELECTED',
+                                : 'DONE — ${_selectedExercises.length} SELECTED',
                           ),
                         ),
                       ),
@@ -391,8 +517,10 @@ class _CreateQuestScreenState
       try {
         await _questCrud.insertQuest({
           'name': _questNameController.text.trim(),
-          'description': _descriptionController.text.trim(),
-          'duration_weeks': _durationToWeeks(selectedDuration),
+          'description':
+              _descriptionController.text.trim(),
+          'duration_weeks':
+              _durationToWeeks(selectedDuration),
           'weekly_goal': selectedWeeklyGoal,
           'start_date': DateTime.now().toIso8601String(),
           'is_active': 1,
@@ -461,10 +589,11 @@ class _CreateQuestScreenState
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
 
-                // ── HEADER BANNER ────────────────────
+                // ── HEADER BANNER ──────────────────────
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
@@ -475,7 +604,8 @@ class _CreateQuestScreenState
                         AppTheme.orangeDark
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius:
+                        BorderRadius.circular(16),
                   ),
                   child: const Column(
                     crossAxisAlignment:
@@ -505,7 +635,171 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 24),
 
-                // ── QUEST NAME ────────────────────────
+                // ── TEMPLATE SELECTOR ──────────────────
+                _FieldLabel(
+                    label: 'CHOOSE A TEMPLATE',
+                    color: secondaryText),
+                const SizedBox(height: 10),
+
+                // Template cards
+                ..._templates.map((template) {
+                  final isSelected =
+                      _selectedTemplate == template['id'];
+                  final color =
+                      Color(template['color'] as int);
+
+                  return Padding(
+                    padding:
+                        const EdgeInsets.only(bottom: 10),
+                    child: GestureDetector(
+                      onTap: () =>
+                          _applyTemplate(template),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? color.withOpacity(0.1)
+                              : cardColor,
+                          borderRadius:
+                              BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? color
+                                : borderColor,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Emoji icon
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: color
+                                    .withOpacity(0.15),
+                                borderRadius:
+                                    BorderRadius.circular(
+                                        14),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  template['icon'],
+                                  style: const TextStyle(
+                                      fontSize: 26),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
+                                children: [
+                                  Text(
+                                    template['name'],
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? color
+                                          : primaryText,
+                                      fontWeight:
+                                          FontWeight.w800,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    template['description'],
+                                    style: TextStyle(
+                                      color: secondaryText,
+                                      fontSize: 11,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  if (template['id'] !=
+                                      'custom') ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets
+                                              .symmetric(
+                                              horizontal: 8,
+                                              vertical: 3),
+                                          decoration:
+                                              BoxDecoration(
+                                            color: color
+                                                .withOpacity(
+                                                    0.15),
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(
+                                                        6),
+                                          ),
+                                          child: Text(
+                                            '${template['weeklyGoal']}x/week',
+                                            style: TextStyle(
+                                              color: color,
+                                              fontSize: 10,
+                                              fontWeight:
+                                                  FontWeight
+                                                      .w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(
+                                            width: 6),
+                                        Container(
+                                          padding: const EdgeInsets
+                                              .symmetric(
+                                              horizontal: 8,
+                                              vertical: 3),
+                                          decoration:
+                                              BoxDecoration(
+                                            color: color
+                                                .withOpacity(
+                                                    0.15),
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(
+                                                        6),
+                                          ),
+                                          child: Text(
+                                            template[
+                                                'duration'],
+                                            style: TextStyle(
+                                              color: color,
+                                              fontSize: 10,
+                                              fontWeight:
+                                                  FontWeight
+                                                      .w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            // Selected indicator
+                            if (isSelected)
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: color,
+                                size: 24,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 20),
+
+                // ── QUEST NAME ─────────────────────────
                 _FieldLabel(
                     label: 'QUEST NAME',
                     color: secondaryText),
@@ -514,9 +808,10 @@ class _CreateQuestScreenState
                   controller: _questNameController,
                   style: TextStyle(color: primaryText),
                   decoration: const InputDecoration(
-                    hintText: 'e.g. 30-Day Strength Builder',
-                    prefixIcon:
-                        Icon(Icons.flag, color: AppTheme.orange),
+                    hintText:
+                        'e.g. 30-Day Strength Builder',
+                    prefixIcon: Icon(Icons.flag,
+                        color: AppTheme.orange),
                   ),
                   validator: (value) {
                     if (value == null ||
@@ -529,7 +824,7 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 20),
 
-                // ── DESCRIPTION ───────────────────────
+                // ── DESCRIPTION ────────────────────────
                 _FieldLabel(
                     label: 'DESCRIPTION (OPTIONAL)',
                     color: secondaryText),
@@ -547,14 +842,17 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 20),
 
-                // ── DURATION ──────────────────────────
+                // ── DURATION ───────────────────────────
                 _FieldLabel(
                     label: 'DURATION',
                     color: secondaryText),
                 const SizedBox(height: 8),
                 Row(
-                  children: ['1 Week', '2 Weeks', '1 Month']
-                      .map((duration) {
+                  children: [
+                    '1 Week',
+                    '2 Weeks',
+                    '1 Month'
+                  ].map((duration) {
                     final isSelected =
                         selectedDuration == duration;
                     return Expanded(
@@ -562,9 +860,8 @@ class _CreateQuestScreenState
                         padding:
                             const EdgeInsets.only(right: 8),
                         child: GestureDetector(
-                          onTap: () => setState(
-                              () => selectedDuration =
-                                  duration),
+                          onTap: () => setState(() =>
+                              selectedDuration = duration),
                           child: Container(
                             padding: const EdgeInsets
                                 .symmetric(vertical: 14),
@@ -601,13 +898,14 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 20),
 
-                // ── WEEKLY GOAL ───────────────────────
+                // ── WEEKLY GOAL ────────────────────────
                 _FieldLabel(
                     label: 'WEEKLY GOAL',
                     color: secondaryText),
                 const SizedBox(height: 8),
                 Row(
-                  children: [1, 2, 3, 4, 5].map((goal) {
+                  children:
+                      [1, 2, 3, 4, 5, 6].map((goal) {
                     final isSelected =
                         selectedWeeklyGoal == goal;
                     return Expanded(
@@ -616,7 +914,8 @@ class _CreateQuestScreenState
                             const EdgeInsets.only(right: 6),
                         child: GestureDetector(
                           onTap: () => setState(
-                              () => selectedWeeklyGoal = goal),
+                              () => selectedWeeklyGoal =
+                                  goal),
                           child: Container(
                             padding: const EdgeInsets
                                 .symmetric(vertical: 14),
@@ -655,13 +954,14 @@ class _CreateQuestScreenState
                   child: Text(
                     'workouts per week',
                     style: TextStyle(
-                        color: secondaryText, fontSize: 12),
+                        color: secondaryText,
+                        fontSize: 12),
                   ),
                 ),
 
                 const SizedBox(height: 24),
 
-                // ── EXERCISES ─────────────────────────
+                // ── EXERCISES ──────────────────────────
                 Row(
                   mainAxisAlignment:
                       MainAxisAlignment.spaceBetween,
@@ -675,8 +975,8 @@ class _CreateQuestScreenState
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color:
-                              AppTheme.orange.withOpacity(0.15),
+                          color: AppTheme.orange
+                              .withOpacity(0.15),
                           borderRadius:
                               BorderRadius.circular(20),
                         ),
@@ -709,29 +1009,27 @@ class _CreateQuestScreenState
                         onTap: _openExercisePicker,
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(20),
+                          padding:
+                              const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             color: cardColor,
                             borderRadius:
                                 BorderRadius.circular(14),
                             border: Border.all(
-                              color: borderColor,
-                              style: BorderStyle.solid,
-                            ),
+                                color: borderColor),
                           ),
                           child: Column(
                             children: [
-                              Icon(
-                                Icons.fitness_center,
-                                color: secondaryText,
-                                size: 32,
-                              ),
+                              Icon(Icons.fitness_center,
+                                  color: secondaryText,
+                                  size: 32),
                               const SizedBox(height: 8),
                               Text(
                                 'No exercises added yet',
                                 style: TextStyle(
                                     color: primaryText,
-                                    fontWeight: FontWeight.w700),
+                                    fontWeight:
+                                        FontWeight.w700),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -751,20 +1049,20 @@ class _CreateQuestScreenState
                             .map((entry) {
                           final index = entry.key;
                           final item = entry.value;
-                          final exercise =
-                              item['exercise'] as Map<String,
-                                  dynamic>;
+                          final exercise = item['exercise']
+                              as Map<String, dynamic>;
 
                           return Container(
                             margin: const EdgeInsets.only(
                                 bottom: 10),
-                            padding: const EdgeInsets.all(14),
+                            padding:
+                                const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: cardColor,
                               borderRadius:
                                   BorderRadius.circular(14),
-                              border:
-                                  Border.all(color: borderColor),
+                              border: Border.all(
+                                  color: borderColor),
                             ),
                             child: Column(
                               children: [
@@ -773,16 +1071,21 @@ class _CreateQuestScreenState
                                     Container(
                                       width: 36,
                                       height: 36,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.orange
-                                            .withOpacity(0.15),
+                                      decoration:
+                                          BoxDecoration(
+                                        color: AppTheme
+                                            .orange
+                                            .withOpacity(
+                                                0.15),
                                         borderRadius:
-                                            BorderRadius.circular(
-                                                10),
+                                            BorderRadius
+                                                .circular(
+                                                    10),
                                       ),
                                       child: const Icon(
                                         Icons.fitness_center,
-                                        color: AppTheme.orange,
+                                        color:
+                                            AppTheme.orange,
                                         size: 18,
                                       ),
                                     ),
@@ -796,23 +1099,25 @@ class _CreateQuestScreenState
                                           Text(
                                             exercise['name'],
                                             style: TextStyle(
-                                              color: primaryText,
+                                              color:
+                                                  primaryText,
                                               fontWeight:
-                                                  FontWeight.w700,
+                                                  FontWeight
+                                                      .w700,
                                               fontSize: 14,
                                             ),
                                           ),
                                           Text(
                                             '${exercise['muscle_group']} • ${exercise['difficulty']}',
                                             style: TextStyle(
-                                              color: secondaryText,
+                                              color:
+                                                  secondaryText,
                                               fontSize: 11,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    // Remove button
                                     IconButton(
                                       icon: const Icon(
                                         Icons
@@ -832,10 +1137,9 @@ class _CreateQuestScreenState
 
                                 const SizedBox(height: 12),
 
-                                // Sets and Reps row
+                                // Sets and Reps
                                 Row(
                                   children: [
-                                    // Sets
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -845,11 +1149,14 @@ class _CreateQuestScreenState
                                           Text(
                                             'SETS',
                                             style: TextStyle(
-                                              color: secondaryText,
+                                              color:
+                                                  secondaryText,
                                               fontSize: 10,
                                               fontWeight:
-                                                  FontWeight.w700,
-                                              letterSpacing: 1,
+                                                  FontWeight
+                                                      .w700,
+                                              letterSpacing:
+                                                  1,
                                             ),
                                           ),
                                           const SizedBox(
@@ -857,15 +1164,18 @@ class _CreateQuestScreenState
                                           Row(
                                             children: [
                                               _CounterButton(
-                                                icon: Icons.remove,
+                                                icon: Icons
+                                                    .remove,
                                                 onTap: () {
-                                                  if (item[
-                                                          'sets'] >
+                                                  if (item['sets'] >
                                                       1) {
-                                                    setState(() {
-                                                      _selectedExercises[
-                                                              index]
-                                                          ['sets'] = item['sets'] - 1;
+                                                    setState(
+                                                        () {
+                                                      _selectedExercises[index]
+                                                              [
+                                                              'sets'] =
+                                                          item['sets'] -
+                                                              1;
                                                     });
                                                   }
                                                 },
@@ -874,12 +1184,15 @@ class _CreateQuestScreenState
                                                   width: 12),
                                               Text(
                                                 '${item['sets']}',
-                                                style: TextStyle(
-                                                  color: primaryText,
+                                                style:
+                                                    TextStyle(
+                                                  color:
+                                                      primaryText,
                                                   fontWeight:
                                                       FontWeight
                                                           .w900,
-                                                  fontSize: 18,
+                                                  fontSize:
+                                                      18,
                                                 ),
                                               ),
                                               const SizedBox(
@@ -887,10 +1200,13 @@ class _CreateQuestScreenState
                                               _CounterButton(
                                                 icon: Icons.add,
                                                 onTap: () {
-                                                  setState(() {
-                                                    _selectedExercises[
-                                                            index]
-                                                        ['sets'] = item['sets'] + 1;
+                                                  setState(
+                                                      () {
+                                                    _selectedExercises[index]
+                                                            [
+                                                            'sets'] =
+                                                        item['sets'] +
+                                                            1;
                                                   });
                                                 },
                                               ),
@@ -906,11 +1222,11 @@ class _CreateQuestScreenState
                                       color: borderColor,
                                     ),
 
-                                    // Reps
                                     Expanded(
                                       child: Padding(
                                         padding:
-                                            const EdgeInsets.only(
+                                            const EdgeInsets
+                                                .only(
                                                 left: 16),
                                         child: Column(
                                           crossAxisAlignment:
@@ -919,13 +1235,16 @@ class _CreateQuestScreenState
                                           children: [
                                             Text(
                                               'REPS',
-                                              style: TextStyle(
+                                              style:
+                                                  TextStyle(
                                                 color:
                                                     secondaryText,
                                                 fontSize: 10,
                                                 fontWeight:
-                                                    FontWeight.w700,
-                                                letterSpacing: 1,
+                                                    FontWeight
+                                                        .w700,
+                                                letterSpacing:
+                                                    1,
                                               ),
                                             ),
                                             const SizedBox(
@@ -933,14 +1252,16 @@ class _CreateQuestScreenState
                                             Row(
                                               children: [
                                                 _CounterButton(
-                                                  icon:
-                                                      Icons.remove,
+                                                  icon: Icons
+                                                      .remove,
                                                   onTap: () {
-                                                    if (item[
-                                                            'reps'] >
+                                                    if (item['reps'] >
                                                         1) {
-                                                      setState(() {
-                                                        _selectedExercises[index]['reps'] = item['reps'] - 1;
+                                                      setState(
+                                                          () {
+                                                        _selectedExercises[index]['reps'] =
+                                                            item['reps'] -
+                                                                1;
                                                       });
                                                     }
                                                   },
@@ -949,22 +1270,28 @@ class _CreateQuestScreenState
                                                     width: 12),
                                                 Text(
                                                   '${item['reps']}',
-                                                  style: TextStyle(
+                                                  style:
+                                                      TextStyle(
                                                     color:
                                                         primaryText,
                                                     fontWeight:
                                                         FontWeight
                                                             .w900,
-                                                    fontSize: 18,
+                                                    fontSize:
+                                                        18,
                                                   ),
                                                 ),
                                                 const SizedBox(
                                                     width: 12),
                                                 _CounterButton(
-                                                  icon: Icons.add,
+                                                  icon:
+                                                      Icons.add,
                                                   onTap: () {
-                                                    setState(() {
-                                                      _selectedExercises[index]['reps'] = item['reps'] + 1;
+                                                    setState(
+                                                        () {
+                                                      _selectedExercises[index]['reps'] =
+                                                          item['reps'] +
+                                                              1;
                                                     });
                                                   },
                                                 ),
@@ -984,18 +1311,20 @@ class _CreateQuestScreenState
 
                 const SizedBox(height: 32),
 
-                // ── CREATE QUEST BUTTON ───────────────
+                // ── CREATE BUTTON ──────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveQuest,
+                    onPressed:
+                        _isSaving ? null : _saveQuest,
                     child: _isSaving
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white),
+                            child:
+                                CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white),
                           )
                         : const Text('CREATE QUEST'),
                   ),
@@ -1011,7 +1340,7 @@ class _CreateQuestScreenState
   }
 }
 
-// Counter +/- button widget
+/// Counter +/- button widget for sets and reps
 class _CounterButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -1036,7 +1365,8 @@ class _CounterButton extends StatelessWidget {
               : AppTheme.lightCardLight,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, size: 16, color: AppTheme.orange),
+        child:
+            Icon(icon, size: 16, color: AppTheme.orange),
       ),
     );
   }
@@ -1045,7 +1375,8 @@ class _CounterButton extends StatelessWidget {
 class _FieldLabel extends StatelessWidget {
   final String label;
   final Color color;
-  const _FieldLabel({required this.label, required this.color});
+  const _FieldLabel(
+      {required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
