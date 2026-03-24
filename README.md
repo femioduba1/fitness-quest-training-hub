@@ -1,8 +1,7 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/⚡-FITNESS_QUEST-FF6000?style=for-the-badge&labelColor=0D0D0D&color=FF6000" height="60"/>
+<img src="https://img.shields.io/badge/⚡-FITNESS_QUEST-FF6000?style=for-the-badge&labelColor=0D0D0D&color=FF6000" height="400"/>
 
-# FITNESS QUEST
 ### Training Challenge Hub
 
 **A fully offline, AI-personalized fitness app built for college students**
